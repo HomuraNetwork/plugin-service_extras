@@ -1,0 +1,76 @@
+<?php /** @var View $this **/ ?>
+
+<?php echo $message ?? null; ?>
+<?php
+$this->Widget->clear();
+$this->Widget->create($this->_($rule_id ? 'AdminMain.form.title_edit' : 'AdminMain.form.title_add', true));
+$this->Form->create();
+?>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.name'); ?></label>
+    <?php $this->Form->fieldText('name', $vars->name ?? '', ['class' => 'form-control']); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.name_help'); ?></div>
+</div>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.capability'); ?></label>
+    <?php $this->Form->fieldText('capability', $vars->capability ?? '', ['class' => 'form-control']); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.capability_help'); ?></div>
+</div>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.parent_package_ids'); ?></label>
+    <?php $this->Form->fieldMultiSelect(
+        'parent_package_ids[]',
+        $packages ?? [],
+        (array) ($vars->parent_package_ids ?? []),
+        ['class' => 'form-select', 'size' => 8]
+    ); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.parent_packages_help'); ?></div>
+</div>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.parent_group_ids'); ?></label>
+    <?php $this->Form->fieldMultiSelect(
+        'parent_group_ids[]',
+        $groups ?? [],
+        (array) ($vars->parent_group_ids ?? []),
+        ['class' => 'form-select', 'size' => 6]
+    ); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.parent_groups_help'); ?></div>
+</div>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.product_group_id'); ?></label>
+    <?php $this->Form->fieldSelect(
+        'product_group_id',
+        ['' => $this->_('AdminMain.form.select_group', true)] + ($groups ?? []),
+        $vars->product_group_id ?? '',
+        ['class' => 'form-select']
+    ); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.product_group_help'); ?></div>
+</div>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.required_option_name'); ?></label>
+    <?php $this->Form->fieldText(
+        'required_option_name',
+        $vars->required_option_name ?? '',
+        ['class' => 'form-control']
+    ); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.required_option_name_help'); ?></div>
+</div>
+<div class="mb-3">
+    <label class="form-label"><?php $this->_('AdminMain.form.required_option_values'); ?></label>
+    <?php $this->Form->fieldTextarea(
+        'required_option_values',
+        $vars->required_option_values ?? '',
+        ['class' => 'form-control', 'rows' => 3]
+    ); ?>
+    <div class="form-text"><?php $this->_('AdminMain.form.required_option_values_help'); ?></div>
+</div>
+<div class="mb-3 form-check">
+    <?php $this->Form->fieldCheckbox('enabled', '1', ($vars->enabled ?? '1') === '1', ['class' => 'form-check-input', 'id' => 'enabled']); ?>
+    <label class="form-check-label" for="enabled"><?php $this->_('AdminMain.form.enabled'); ?></label>
+</div>
+<div class="alert alert-info"><?php $this->_('AdminMain.form.association_help'); ?></div>
+<div class="d-flex gap-2 justify-content-end">
+    <a href="<?php echo $this->base_uri . 'plugin/service_extras/admin_main/'; ?>" class="btn btn-light"><?php $this->_('AdminMain.form.cancel'); ?></a>
+    <?php $this->Form->fieldSubmit('save', $this->_('AdminMain.form.save', true), ['class' => 'btn btn-primary']); ?>
+</div>
+<?php $this->Form->end(); $this->Widget->end(); ?>

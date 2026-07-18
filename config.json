@@ -1,0 +1,12 @@
+{
+    "version": "1.0.0",
+    "name": "ServiceExtrasPlugin.name",
+    "description": "ServiceExtrasPlugin.description",
+    "icon": "bi bi-bag-plus-fill",
+    "authors": [
+        {
+            "name": "Homura Network",
+            "url": "https://github.com/HomuraNetwork"
+        }
+    ]
+}

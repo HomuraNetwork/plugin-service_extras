@@ -1,0 +1,67 @@
+<?php /** @var View $this **/ ?>
+
+<?php echo $message ?? null; ?>
+<?php
+$this->Widget->clear();
+$this->Widget->setLinkButtons([[
+    'icon' => 'bi bi-plus-lg',
+    'name' => $this->_('AdminMain.index.add', true),
+    'attributes' => ['href' => $this->base_uri . 'plugin/service_extras/admin_main/add/']
+]]);
+$this->Widget->setBodyWrapper(false);
+$this->Widget->create($this->_('AdminMain.index.title', true));
+?>
+<div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+        <thead><tr>
+            <th><?php $this->_('AdminMain.index.name'); ?></th>
+            <th><?php $this->_('AdminMain.index.capability'); ?></th>
+            <th><?php $this->_('AdminMain.index.parents'); ?></th>
+            <th><?php $this->_('AdminMain.index.products'); ?></th>
+            <th><?php $this->_('AdminMain.index.condition'); ?></th>
+            <th><?php $this->_('AdminMain.index.status'); ?></th>
+            <th class="text-end"><?php $this->_('AdminMain.index.actions'); ?></th>
+        </tr></thead>
+        <tbody>
+        <?php foreach (($rules ?? []) as $rule) { ?>
+            <tr>
+                <td><?php echo $this->Html->safe($rule->name); ?></td>
+                <td><code><?php echo $this->Html->safe($rule->capability); ?></code></td>
+                <td>
+                    <?php foreach ($rule->parent_package_ids as $package_id) { ?>
+                        <div><?php echo $this->Html->safe($packages[$package_id] ?? ('#' . $package_id)); ?></div>
+                    <?php } ?>
+                    <?php foreach ($rule->parent_group_ids as $group_id) { ?>
+                        <div><?php echo $this->Html->safe($groups[$group_id] ?? ('#' . $group_id)); ?></div>
+                    <?php } ?>
+                </td>
+                <td><?php echo $this->Html->safe(
+                    $groups[$rule->product_group_id] ?? ('#' . $rule->product_group_id)
+                ); ?></td>
+                <td>
+                    <?php if (!empty($rule->required_option_name)) { ?>
+                        <code><?php echo $this->Html->safe($rule->required_option_name); ?></code>
+                        <?php if (!empty($rule->required_option_values)) { ?>
+                            <div><?php echo $this->Html->safe(implode(', ', $rule->required_option_values)); ?></div>
+                        <?php } ?>
+                    <?php } else { ?>
+                        <span class="text-muted"><?php $this->_('AdminMain.index.no_condition'); ?></span>
+                    <?php } ?>
+                </td>
+                <td><?php $this->_($rule->enabled === '1' ? 'AdminMain.index.enabled' : 'AdminMain.index.disabled'); ?></td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-secondary" href="<?php echo $this->base_uri . 'plugin/service_extras/admin_main/edit/' . (int) $rule->id . '/'; ?>"><?php $this->_('AdminMain.index.edit'); ?></a>
+                    <?php $this->Form->create($this->base_uri . 'plugin/service_extras/admin_main/delete/', ['class' => 'd-inline']); ?>
+                    <?php $this->Form->fieldHidden('id', $rule->id); ?>
+                    <button type="button" class="btn btn-sm btn-outline-danger modal-confirm-delete" data-confirm-message="<?php echo $this->Html->safe($this->_('AdminMain.index.confirm_delete', true)); ?>"><?php $this->_('AdminMain.index.delete'); ?></button>
+                    <?php $this->Form->end(); ?>
+                </td>
+            </tr>
+        <?php } ?>
+        <?php if (empty($rules)) { ?>
+            <tr><td colspan="7" class="text-center text-muted"><?php $this->_('AdminMain.index.empty'); ?></td></tr>
+        <?php } ?>
+        </tbody>
+    </table>
+</div>
+<?php $this->Widget->end(); ?>

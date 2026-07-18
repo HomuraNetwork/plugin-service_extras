@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Lint PHP and PDT files
+        run: find . -type f \( -name '*.php' -o -name '*.pdt' \) -print0 | xargs -0 -n1 php -l
+      - name: Run regression tests
+        run: php tests/review_regressions.php
