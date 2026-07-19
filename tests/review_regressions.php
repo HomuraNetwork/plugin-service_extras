@@ -50,7 +50,7 @@ assertSameValue(
 
 assertSameValue(
     true,
-    is_callable([$plugin, 'tabServiceExtraRule42']),
+    is_callable([$plugin, 'tabExtraAddon42']),
     'Each enabled rule must be dispatchable as an independent service tab.'
 );
 assertSameValue(
@@ -61,6 +61,7 @@ assertSameValue(
 
 $source = file_get_contents(dirname(__DIR__) . '/service_extras_plugin.php');
 $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rules.php');
+$orders_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_orders.php');
 $form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
 $admin_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/admin_main.php');
 $tab_view_source = file_get_contents(dirname(__DIR__) . '/views/default/tab_service_extra.pdt');
@@ -72,7 +73,7 @@ $offerings_source = substr(
 );
 $preview_condition_position = strpos(
     $source,
-    "if (!empty(\$post['preview']) || !empty(\$post['purchase']))"
+    "if (!empty(\$post['review']) || !empty(\$post['purchase']))"
 );
 $availability_call_position = strpos(
     $source,
@@ -90,6 +91,13 @@ assertSameValue(
     true,
     strpos($source, "'parent_service_id' => \$parent_service->id") !== false,
     'Each purchase must be stored as a child service linked to its parent.'
+);
+assertSameValue(
+    true,
+    strpos($source, "'parent_service_id' => (int) \$parent_service->id") !== false
+        && strpos($source, "'invoice_id' => (int) \$invoice_id") !== false
+        && strpos($source, "'service_id' => (int) \$service_id") !== false,
+    'Each generated invoice and pending child service must be tracked with its parent.'
 );
 assertSameValue(
     true,
@@ -131,6 +139,13 @@ assertSameValue(
     strpos($source, "version_compare(\$current_version, '1.1.2', '<')") !== false
         && strpos($source, 'setField($column, null, false)') !== false,
     'Version 1.1.2 must drop obsolete rule columns left by earlier installations.'
+);
+assertSameValue(
+    true,
+    strpos($source, "version_compare(\$current_version, '1.2.0', '<')") !== false
+        && strpos($source, "->create('service_extra_orders', true)") !== false
+        && strpos($source, "'expire_unpaid_extras'") !== false,
+    'Version 1.2.0 must install order tracking and its unpaid-order cron task.'
 );
 assertSameValue(
     true,
@@ -184,6 +199,54 @@ assertSameValue(
         && $tab_helpers_position !== false
         && $tab_view_position < $tab_helpers_position,
     'Service tab helpers must be attached after the plugin creates its custom View instance.'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, 'service-extra-product-card') !== false
+        && strpos($tab_view_source, '<select') === false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_select') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_review') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_payment') !== false,
+    'The purchase page must use product cards and a guided select, review, and payment flow.'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, 'window.location.replace') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.continue_payment') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.pay_invoice') === false,
+    'A completed purchase must continue directly into billing without instructing the client to find an invoice.'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, '$parent_package->name') !== false
+        && strpos($tab_view_source, '$service->name') !== false
+        && strpos($tab_view_source, '$service->date_renews') !== false,
+    'The purchase page must clearly identify the parent package, service label, and renewal date.'
+);
+assertSameValue(
+    true,
+    strpos($source, "preg_match('/^tabExtraAddon(\\d+)$/', \$method") !== false
+        && strpos($source, "\$tabs['tabExtraAddon' . (int) \$rule->id]") !== false
+        && strpos($source, 'tabServiceExtraRule') === false,
+    'Dynamic service tab routes must use the concise tabExtraAddon action name.'
+);
+assertSameValue(
+    true,
+    strpos($orders_source, "max(1, (int) \$hours) * 3600") !== false
+        && strpos($source, 'private const UNPAID_ORDER_TTL_HOURS = 12;') !== false,
+    'Tracked unpaid purchases must become eligible for cleanup after 12 hours.'
+);
+$expiry_method_position = strpos($source, 'private function expireUnpaidOrders(');
+$void_position = strpos($source, "['status' => 'void']", $expiry_method_position);
+$delete_position = strpos($source, '$this->Services->delete((int) $service->id);', $expiry_method_position);
+assertSameValue(
+    true,
+    $expiry_method_position !== false
+        && $void_position !== false
+        && $delete_position !== false
+        && $void_position < $delete_position
+        && strpos($source, "(float) (\$invoice->paid ?? 0) > 0", $expiry_method_position) !== false,
+    'The expiry cron must preserve paid orders, void unpaid invoices, and then remove pending services.'
 );
 
 echo "review regressions: ok\n";

@@ -5,6 +5,8 @@ use Blesta\Core\Util\PackageOptions\Logic as OptionLogic;
 
 class ServiceExtrasPlugin extends Plugin
 {
+    private const UNPAID_ORDER_TTL_HOURS = 12;
+
     public function __construct()
     {
         Language::loadLang('service_extras_plugin', null, dirname(__FILE__) . DS . 'language' . DS);
@@ -15,19 +17,9 @@ class ServiceExtrasPlugin extends Plugin
     public function install($plugin_id)
     {
         try {
-            $this->Record
-                ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
-                ->setField('company_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
-                ->setField('name', ['type' => 'varchar', 'size' => 255])
-                ->setField('parent_package_ids', ['type' => 'text'])
-                ->setField('product_group_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
-                ->setField('product_package_ids', ['type' => 'text'])
-                ->setField('enabled', ['type' => 'char', 'size' => 1, 'default' => '1'])
-                ->setField('date_added', ['type' => 'datetime'])
-                ->setField('date_updated', ['type' => 'datetime'])
-                ->setKey(['id'], 'primary')
-                ->setKey(['company_id', 'enabled'], 'index')
-                ->create('service_extra_rules', true);
+            $this->createRuleTable();
+            $this->createOrderTable();
+            $this->addCronTasks($this->getCronTasks());
         } catch (\Throwable $e) {
             $this->Input->setErrors(['db' => ['create' => $e->getMessage()]]);
         }
@@ -94,6 +86,11 @@ class ServiceExtrasPlugin extends Plugin
                 $this->dropLegacyRuleColumns();
             }
 
+            if (version_compare($current_version, '1.2.0', '<')) {
+                $this->createOrderTable();
+                $this->addCronTasks($this->getCronTasks());
+            }
+
             Loader::loadModels($this, ['ServiceExtras.ServiceExtraRules']);
             $plugin_instances = $this->Record->select(['id', 'company_id'])->from('plugins')
                 ->where('dir', '=', 'service_extras')
@@ -122,6 +119,60 @@ class ServiceExtrasPlugin extends Plugin
             ? ($result['count'] ?? 0)
             : (is_object($result) ? ($result->count ?? 0) : 0);
         return (int) $count > 0;
+    }
+
+    private function tableExists($table)
+    {
+        $statement = $this->Record->query(
+            'SELECT COUNT(*) AS `count` FROM `information_schema`.`TABLES`'
+            . ' WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = ?',
+            $table
+        );
+        $result = $statement->fetch();
+        $count = is_array($result)
+            ? ($result['count'] ?? 0)
+            : (is_object($result) ? ($result->count ?? 0) : 0);
+        return (int) $count > 0;
+    }
+
+    private function createRuleTable()
+    {
+        $this->Record
+            ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
+            ->setField('company_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('name', ['type' => 'varchar', 'size' => 255])
+            ->setField('parent_package_ids', ['type' => 'text'])
+            ->setField('product_group_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('product_package_ids', ['type' => 'text'])
+            ->setField('enabled', ['type' => 'char', 'size' => 1, 'default' => '1'])
+            ->setField('date_added', ['type' => 'datetime'])
+            ->setField('date_updated', ['type' => 'datetime'])
+            ->setKey(['id'], 'primary')
+            ->setKey(['company_id', 'enabled'], 'index')
+            ->create('service_extra_rules', true);
+    }
+
+    private function createOrderTable()
+    {
+        $this->Record
+            ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
+            ->setField('company_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('rule_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('parent_service_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('service_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField('invoice_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
+            ->setField(
+                'status',
+                ['type' => 'enum', 'size' => "'pending','completed','expired','error'", 'default' => 'pending']
+            )
+            ->setField('last_error', ['type' => 'text', 'is_null' => true, 'default' => null])
+            ->setField('date_added', ['type' => 'datetime'])
+            ->setField('date_updated', ['type' => 'datetime'])
+            ->setKey(['id'], 'primary')
+            ->setKey(['service_id'], 'unique')
+            ->setKey(['invoice_id'], 'unique')
+            ->setKey(['company_id', 'status', 'date_added'], 'index')
+            ->create('service_extra_orders', true);
     }
 
     private function legacyRuleColumns()
@@ -161,8 +212,167 @@ class ServiceExtrasPlugin extends Plugin
 
     public function uninstall($plugin_id, $last_instance)
     {
+        Loader::loadModels($this, ['CronTasks']);
+        $company_id = (int) Configure::get('Blesta.company_id');
+
+        if ($this->tableExists('service_extra_orders')) {
+            $this->Record->from('service_extra_orders')->where('company_id', '=', $company_id)->delete();
+        }
+        if ($this->tableExists('service_extra_rules')) {
+            $this->Record->from('service_extra_rules')->where('company_id', '=', $company_id)->delete();
+        }
+
+        foreach ($this->getCronTasks() as $task) {
+            $task_run = $this->CronTasks->getTaskRunByKey(
+                $task['key'],
+                $task['dir'],
+                false,
+                $task['task_type']
+            );
+            if ($task_run) {
+                $this->CronTasks->deleteTaskRun($task_run->task_run_id);
+            }
+
+            if ($last_instance) {
+                $cron_task = $this->CronTasks->getByKey($task['key'], $task['dir'], $task['task_type']);
+                if ($cron_task) {
+                    $this->CronTasks->deleteTask($cron_task->id, $task['task_type'], $task['dir']);
+                }
+            }
+        }
+
         if ($last_instance) {
+            $this->Record->drop('service_extra_orders');
             $this->Record->drop('service_extra_rules');
+        }
+    }
+
+    public function cron($key)
+    {
+        if ($key === 'expire_unpaid_extras') {
+            $this->expireUnpaidOrders((int) Configure::get('Blesta.company_id'));
+        }
+    }
+
+    private function getCronTasks()
+    {
+        return [
+            [
+                'key' => 'expire_unpaid_extras',
+                'dir' => 'service_extras',
+                'task_type' => 'plugin',
+                'name' => Language::_('ServiceExtrasPlugin.cron.expire_unpaid_name', true),
+                'description' => Language::_('ServiceExtrasPlugin.cron.expire_unpaid_desc', true),
+                'type' => 'interval',
+                'type_value' => 5,
+                'enabled' => 1
+            ]
+        ];
+    }
+
+    private function addCronTasks(array $tasks)
+    {
+        Loader::loadModels($this, ['CronTasks']);
+        foreach ($tasks as $task) {
+            $task_id = $this->CronTasks->add($task);
+            if (!$task_id) {
+                $cron_task = $this->CronTasks->getByKey($task['key'], $task['dir'], $task['task_type']);
+                $task_id = $cron_task->id ?? null;
+            }
+
+            if ($task_id) {
+                $vars = ['enabled' => $task['enabled']];
+                if ($task['type'] === 'interval') {
+                    $vars['interval'] = $task['type_value'];
+                } else {
+                    $vars['time'] = $task['type_value'];
+                }
+                $this->CronTasks->addTaskRun($task_id, $vars);
+            }
+        }
+    }
+
+    private function errorMessage($errors, $fallback)
+    {
+        $messages = [];
+        $iterator = function ($value) use (&$iterator, &$messages) {
+            if (is_array($value)) {
+                foreach ($value as $item) {
+                    $iterator($item);
+                }
+            } elseif (is_scalar($value) && trim((string) $value) !== '') {
+                $messages[] = trim((string) $value);
+            }
+        };
+        $iterator($errors);
+
+        return $messages ? implode(' ', $messages) : $fallback;
+    }
+
+    private function expireUnpaidOrders($company_id)
+    {
+        Loader::loadModels($this, [
+            'Invoices',
+            'Services',
+            'ServiceExtras.ServiceExtraOrders'
+        ]);
+
+        foreach ($this->ServiceExtraOrders->getExpiredPending(
+            $company_id,
+            self::UNPAID_ORDER_TTL_HOURS
+        ) as $order) {
+            try {
+                $service = $this->Services->get((int) $order->service_id);
+                $invoice = $this->Invoices->get((int) $order->invoice_id);
+
+                if (!$service) {
+                    $this->ServiceExtraOrders->setStatus($order->id, 'expired');
+                    continue;
+                }
+                if (($service->status ?? null) !== 'pending') {
+                    $this->ServiceExtraOrders->setStatus($order->id, 'completed');
+                    continue;
+                }
+                if ($invoice && ((float) ($invoice->paid ?? 0) > 0 || (float) ($invoice->due ?? 0) <= 0)) {
+                    $this->ServiceExtraOrders->setStatus($order->id, 'completed');
+                    continue;
+                }
+
+                if ($invoice && ($invoice->status ?? null) !== 'void') {
+                    $this->Invoices->edit((int) $invoice->id, ['status' => 'void']);
+                    if (($errors = $this->Invoices->errors())) {
+                        $this->ServiceExtraOrders->setStatus(
+                            $order->id,
+                            'error',
+                            $this->errorMessage($errors, 'The unpaid invoice could not be voided.')
+                        );
+                        continue;
+                    }
+                    $invoice = $this->Invoices->get((int) $invoice->id);
+                    if (($invoice->status ?? null) !== 'void') {
+                        $this->ServiceExtraOrders->setStatus(
+                            $order->id,
+                            'error',
+                            'The unpaid invoice did not enter the void status.'
+                        );
+                        continue;
+                    }
+                }
+
+                $this->Services->delete((int) $service->id);
+                if (($errors = $this->Services->errors())) {
+                    $this->ServiceExtraOrders->setStatus(
+                        $order->id,
+                        'error',
+                        $this->errorMessage($errors, 'The pending service could not be removed.')
+                    );
+                    continue;
+                }
+
+                $this->ServiceExtraOrders->setStatus($order->id, 'expired');
+            } catch (\Throwable $e) {
+                $this->ServiceExtraOrders->setStatus($order->id, 'error', $e->getMessage());
+            }
         }
     }
 
@@ -185,7 +395,7 @@ class ServiceExtrasPlugin extends Plugin
 
     public function __call($method, $arguments)
     {
-        if (preg_match('/^tabServiceExtraRule(\d+)$/', $method, $matches)) {
+        if (preg_match('/^tabExtraAddon(\d+)$/', $method, $matches)) {
             return $this->tabServiceExtra((int) $matches[1], ...$arguments);
         }
 
@@ -297,7 +507,7 @@ class ServiceExtrasPlugin extends Plugin
 
         $tabs = [];
         foreach ($context['rules'] as $rule) {
-            $tabs['tabServiceExtraRule' . (int) $rule->id] = [
+            $tabs['tabExtraAddon' . (int) $rule->id] = [
                 'name' => $rule->name,
                 'icon' => 'fas fa-plus-circle'
             ];
@@ -387,15 +597,23 @@ class ServiceExtrasPlugin extends Plugin
         array $post,
         $expires_at = null
     ) {
-        Loader::loadModels($this, ['Services', 'Invoices', 'PackageOptions', 'PackageOptionConditionSets']);
+        Loader::loadModels($this, [
+            'Services',
+            'Invoices',
+            'PackageOptions',
+            'PackageOptionConditionSets',
+            'ServiceExtras.ServiceExtraOrders'
+        ]);
 
         $package = $offering['package'];
         $pricing = $offering['pricing'];
         $data = $post;
         unset(
             $data['_csrf_token'],
-            $data['preview'],
+            $data['review'],
             $data['purchase'],
+            $data['select_product'],
+            $data['displayed_pricing_id'],
             $data['override_price'],
             $data['override_currency'],
             $data['date_added'],
@@ -488,6 +706,44 @@ class ServiceExtrasPlugin extends Plugin
             return null;
         }
 
+        try {
+            $order_id = $this->ServiceExtraOrders->add([
+                'company_id' => (int) ($package->company_id ?? 0),
+                'rule_id' => (int) ($offering['rule']->id ?? 0),
+                'parent_service_id' => (int) $parent_service->id,
+                'service_id' => (int) $service_id,
+                'invoice_id' => (int) $invoice_id
+            ]);
+        } catch (\Throwable $e) {
+            $order_id = null;
+        }
+        if (!$order_id) {
+            try {
+                $this->Invoices->edit($invoice_id, ['status' => 'void']);
+            } catch (\Throwable $e) {
+            }
+            try {
+                $this->Services->delete($service_id);
+            } catch (\Throwable $e) {
+            }
+            $this->Input->setErrors([
+                'service_extra' => ['tracking' => Language::_('ServiceExtrasPlugin.!error.tracking', true)]
+            ]);
+            return null;
+        }
+
+        try {
+            $this->Invoices->edit($invoice_id, [
+                'note_public' => Language::_(
+                    'ServiceExtrasPlugin.purchase.invoice_note',
+                    true,
+                    (string) (($parent_service->package ?? null)->name ?? ''),
+                    (string) ($parent_service->name ?? '')
+                )
+            ]);
+        } catch (\Throwable $e) {
+        }
+
         return ['service_id' => $service_id, 'invoice_id' => $invoice_id];
     }
 
@@ -563,6 +819,13 @@ class ServiceExtrasPlugin extends Plugin
         }
 
         $post = $post ?? [];
+        $requested_pricing_id = (int) ($post['pricing_id'] ?? 0);
+        $displayed_pricing_id = (int) ($post['displayed_pricing_id'] ?? 0);
+        if (!empty($post['select_product'])
+            || ($displayed_pricing_id > 0 && $requested_pricing_id !== $displayed_pricing_id)) {
+            unset($post['configoptions']);
+            unset($post['review'], $post['purchase']);
+        }
         $selected_id = (int) ($post['pricing_id'] ?? array_key_first($offerings));
         $selected = $offerings[$selected_id] ?? null;
         if (!$selected) {
@@ -607,7 +870,7 @@ class ServiceExtrasPlugin extends Plugin
         $created = null;
         $pricing_totals = null;
         $scheduled_cancellation = null;
-        if (!empty($post['preview']) || !empty($post['purchase'])) {
+        if (!empty($post['review']) || !empty($post['purchase'])) {
             $formatted_options = $this->PackageOptions->formatOptions($post['configoptions'] ?? []);
             $availability = $this->serviceExtraAvailability(
                 $context['package'],
@@ -685,9 +948,6 @@ class ServiceExtrasPlugin extends Plugin
                         $post,
                         $scheduled_cancellation
                     );
-                    if ($created) {
-                        $this->setMessage('success', Language::_('ServiceExtrasPlugin.!success.created', true));
-                    }
                 }
             }
 
@@ -714,6 +974,7 @@ class ServiceExtrasPlugin extends Plugin
         $this->view->setView('tab_service_extra', 'ServiceExtras.default');
         $this->view->base_uri = $this->base_uri;
         $this->view->set('service', $service);
+        $this->view->set('parent_package', $context['package']);
         $this->view->set('rule', $rule);
         $this->view->set('offerings', $offerings);
         $this->view->set('selected_id', $selected_id);
@@ -733,6 +994,7 @@ class ServiceExtrasPlugin extends Plugin
                 : null
         );
         $this->view->set('pricing_totals', $pricing_totals);
+        $this->view->set('unpaid_order_ttl_hours', self::UNPAID_ORDER_TTL_HOURS);
 
         return $this->view->fetch();
     }

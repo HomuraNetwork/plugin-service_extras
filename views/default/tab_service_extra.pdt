@@ -1,24 +1,72 @@
 <?php /** @var View $this **/ ?>
+<?php
+$checkout_step = !empty($created) ? 3 : (is_array($preview) ? 2 : 1);
+$status_label = ucwords(str_replace('_', ' ', (string) ($service->status ?? '')));
+?>
 
-<h4><?php echo $this->Html->safe($rule->name ?? ''); ?></h4>
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="card-title mb-2"><?php echo $this->Html->safe($rule->name ?? ''); ?></h4>
+        <p class="text-muted mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.intro'); ?></p>
+        <dl class="row mb-0">
+            <dt class="col-sm-3"><?php $this->_('ServiceExtrasPlugin.purchase.target_package'); ?></dt>
+            <dd class="col-sm-9"><?php echo $this->Html->safe($parent_package->name ?? ''); ?></dd>
+            <dt class="col-sm-3"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></dt>
+            <dd class="col-sm-9"><strong><?php echo $this->Html->safe($service->name ?? ''); ?></strong></dd>
+            <dt class="col-sm-3"><?php $this->_('ServiceExtrasPlugin.purchase.status'); ?></dt>
+            <dd class="col-sm-9"><?php echo $this->Html->safe($status_label); ?></dd>
+            <?php if (!empty($service->date_renews)) { ?>
+            <dt class="col-sm-3"><?php $this->_('ServiceExtrasPlugin.purchase.renews'); ?></dt>
+            <dd class="col-sm-9"><?php echo $this->Html->safe(
+                $this->Date->cast($service->date_renews, 'date_time')
+            ); ?></dd>
+            <?php } ?>
+        </dl>
+    </div>
+</div>
+
+<div class="row g-2 mb-4 service-extra-steps">
+    <?php foreach ([
+        1 => 'ServiceExtrasPlugin.purchase.step_select',
+        2 => 'ServiceExtrasPlugin.purchase.step_review',
+        3 => 'ServiceExtrasPlugin.purchase.step_payment'
+    ] as $step => $language_key) { ?>
+    <div class="col-md-4">
+        <div class="border rounded p-3 h-100<?php echo $checkout_step === $step
+            ? ' border-primary bg-light'
+            : ($checkout_step > $step ? ' border-success' : ''); ?>">
+            <span class="badge <?php echo $checkout_step >= $step ? 'bg-primary' : 'bg-secondary'; ?> me-2">
+                <?php echo (int) $step; ?>
+            </span>
+            <strong><?php $this->_($language_key); ?></strong>
+        </div>
+    </div>
+    <?php } ?>
+</div>
 
 <?php if (!empty($created)) { ?>
 <div class="alert alert-success">
-    <?php $this->_('ServiceExtrasPlugin.!success.created'); ?>
-    <div class="mt-2">
-        <a class="btn btn-primary" href="<?php echo $this->Html->safe($invoice_uri ?? '#'); ?>">
-            <?php $this->_('ServiceExtrasPlugin.purchase.pay_invoice'); ?>
-        </a>
-    </div>
+    <h5 class="alert-heading"><?php $this->_('ServiceExtrasPlugin.!success.created'); ?></h5>
+    <p class="mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.redirecting'); ?></p>
+    <a class="btn btn-primary" href="<?php echo $this->Html->safe($invoice_uri ?? '#'); ?>">
+        <?php $this->_('ServiceExtrasPlugin.purchase.continue'); ?>
+    </a>
 </div>
-<?php } ?>
-
+<script type="text/javascript">
+    window.location.replace(<?php echo json_encode((string) ($invoice_uri ?? '')); ?>);
+</script>
+<?php } else { ?>
 <?php $this->Form->create(); ?>
-<div class="mb-3">
-    <label class="form-label" for="service_extra_pricing_id">
-        <?php $this->_('ServiceExtrasPlugin.purchase.product'); ?>
-    </label>
-    <select class="form-select" name="pricing_id" id="service_extra_pricing_id" onchange="this.form.submit();">
+<input type="hidden" name="displayed_pricing_id" value="<?php echo (int) $selected_id; ?>">
+<section class="mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.choose_heading'); ?></h5>
+            <p class="text-muted mb-0"><?php $this->_('ServiceExtrasPlugin.purchase.choose_help'); ?></p>
+        </div>
+    </div>
+
+    <div class="row g-3" id="service_extra_products">
         <?php foreach ($offerings as $pricing_id => $offering) { ?>
             <?php
             $pricing = $offering['pricing'];
@@ -42,70 +90,121 @@
                     ? $this->_('ServiceExtrasPlugin.purchase.price_intro', true, $price, $renewal_price, $period)
                     : $this->_('ServiceExtrasPlugin.purchase.price_recurring', true, $price, $period);
             }
-            $label = ($offering['package']->name ?? ('Package #' . $offering['package']->id))
-                . ' - ' . ($pricing->period === 'onetime' ? $period . ' - ' . $billing : $billing);
+            $selected_product = (int) $selected_id === (int) $pricing_id;
             ?>
-            <option value="<?php echo (int) $pricing_id; ?>"<?php echo (int) $selected_id === (int) $pricing_id
-                ? ' selected="selected"'
-                : ''; ?>><?php echo $this->Html->safe($label); ?></option>
+        <div class="col-md-6 col-xl-4">
+            <input
+                class="service-extra-product-radio visually-hidden"
+                type="radio"
+                name="pricing_id"
+                id="service_extra_pricing_<?php echo (int) $pricing_id; ?>"
+                value="<?php echo (int) $pricing_id; ?>"
+                <?php echo $selected_product ? 'checked="checked"' : ''; ?>
+            >
+            <label
+                class="card h-100 service-extra-product-card<?php echo $selected_product
+                    ? ' border-primary shadow-sm'
+                    : ''; ?>"
+                for="service_extra_pricing_<?php echo (int) $pricing_id; ?>"
+                role="button"
+            >
+                <span class="card-body">
+                    <span class="d-block fw-bold mb-2">
+                        <?php echo $this->Html->safe(
+                            $offering['package']->name ?? ('Package #' . $offering['package']->id)
+                        ); ?>
+                    </span>
+                    <span class="d-block fs-5 text-primary mb-1"><?php echo $this->Html->safe($billing); ?></span>
+                    <span class="d-block text-muted small"><?php echo $this->Html->safe($period); ?></span>
+                </span>
+            </label>
+        </div>
         <?php } ?>
-    </select>
-</div>
+    </div>
+</section>
 
 <?php if (isset($module_fields_html) && ($module_html = $module_fields_html->generate(null, $this->view))) { ?>
-<div class="mb-3">
-    <?php echo $module_html; ?>
-</div>
+<section class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title"><?php $this->_('ServiceExtrasPlugin.purchase.configuration'); ?></h5>
+        <?php echo $module_html; ?>
+    </div>
+</section>
 <?php } ?>
 
 <?php if (isset($package_fields_html) && ($options_html = $package_fields_html->generate(null, $this->view))) { ?>
-<div class="mb-3">
-    <h5><?php $this->_('ServiceExtrasPlugin.purchase.options'); ?></h5>
-    <?php echo $options_html; ?>
-</div>
+<section class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title"><?php $this->_('ServiceExtrasPlugin.purchase.configuration'); ?></h5>
+        <?php echo $options_html; ?>
+    </div>
+</section>
 <?php } ?>
 
 <?php if (is_array($preview)) { ?>
-<div class="alert alert-info">
-    <h5><?php $this->_('ServiceExtrasPlugin.purchase.preview'); ?></h5>
-    <dl class="row mb-0">
-        <?php foreach ($preview as $key => $value) { ?>
-            <?php if (is_scalar($value) && $key !== 'notice') { ?>
-            <dt class="col-sm-4"><?php echo $this->Html->safe(ucwords(str_replace('_', ' ', $key))); ?></dt>
-            <dd class="col-sm-8"><?php echo $this->Html->safe($value); ?></dd>
+<section class="card border-primary mb-4" id="service_extra_review">
+    <div class="card-header bg-transparent">
+        <h5 class="mb-0"><?php $this->_('ServiceExtrasPlugin.purchase.review_heading'); ?></h5>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.product'); ?></dt>
+            <dd class="col-sm-8"><?php echo $this->Html->safe($selected['package']->name ?? ''); ?></dd>
+            <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></dt>
+            <dd class="col-sm-8"><?php echo $this->Html->safe($service->name ?? ''); ?></dd>
+            <?php foreach ($preview as $key => $value) { ?>
+                <?php if (is_scalar($value)
+                    && !in_array($key, ['notice', '_service_extra', 'product'], true)
+                    && !($key === 'valid_until' && !empty($scheduled_cancellation))) { ?>
+                <dt class="col-sm-4"><?php echo $this->Html->safe(
+                    ucwords(str_replace('_', ' ', $key))
+                ); ?></dt>
+                <dd class="col-sm-8"><?php echo $this->Html->safe($value); ?></dd>
+                <?php } ?>
             <?php } ?>
+            <?php if (!empty($scheduled_cancellation)) { ?>
+            <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.service_ends'); ?></dt>
+            <dd class="col-sm-8"><strong><?php echo $this->Html->safe(
+                $this->Date->cast($scheduled_cancellation, 'date_time')
+            ); ?></strong></dd>
+            <?php } ?>
+            <?php if (!empty($pricing_totals)) { ?>
+            <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.due_now'); ?></dt>
+            <dd class="col-sm-8"><strong><?php echo $this->CurrencyFormat->format(
+                $pricing_totals->total_without_exclusive_tax,
+                $selected['pricing']->currency
+            ); ?></strong></dd>
+            <?php } ?>
+        </dl>
+
+        <?php if (!empty($preview['notice'])) { ?>
+        <div class="alert alert-info mt-3 mb-0">
+            <?php echo $this->Html->safe($preview['notice']); ?>
+        </div>
         <?php } ?>
-    </dl>
-    <?php if (!empty($preview['notice'])) { ?>
-        <p class="mb-0 mt-2"><?php echo $this->Html->safe($preview['notice']); ?></p>
-    <?php } ?>
-    <?php if (!empty($scheduled_cancellation)) { ?>
-    <hr>
-    <p class="mb-0">
-        <strong><?php $this->_('ServiceExtrasPlugin.purchase.scheduled_cancellation'); ?>:</strong>
-        <?php echo $this->Html->safe($this->Date->cast($scheduled_cancellation, 'date_time')); ?>
-    </p>
-    <?php } ?>
-    <?php if (!empty($pricing_totals)) { ?>
-    <hr>
-    <p class="mb-0">
-        <strong><?php $this->_('ServiceExtrasPlugin.purchase.estimated_total'); ?>:</strong>
-        <?php echo $this->CurrencyFormat->format(
-            $pricing_totals->total_without_exclusive_tax,
-            $selected['pricing']->currency
-        ); ?>
-    </p>
-    <?php } ?>
+        <div class="alert alert-warning mt-3 mb-0">
+            <?php $this->_(
+                'ServiceExtrasPlugin.purchase.payment_window',
+                false,
+                (int) $unpaid_order_ttl_hours
+            ); ?>
+        </div>
+    </div>
+</section>
+<div class="alert alert-secondary d-none" id="service_extra_review_required">
+    <?php $this->_('ServiceExtrasPlugin.purchase.review_required'); ?>
 </div>
 <?php } ?>
 
 <div class="d-flex gap-2 justify-content-end">
-    <button type="submit" name="preview" value="1" class="btn btn-outline-secondary">
-        <?php $this->_('ServiceExtrasPlugin.purchase.preview_button'); ?>
+    <button type="submit" name="review" value="1" class="btn btn-outline-primary">
+        <?php $this->_(is_array($preview)
+            ? 'ServiceExtrasPlugin.purchase.review_again'
+            : 'ServiceExtrasPlugin.purchase.review_button'); ?>
     </button>
-    <?php if (is_array($preview) && $scheduled_cancellation !== false && empty($created)) { ?>
+    <?php if (is_array($preview) && $scheduled_cancellation !== false) { ?>
     <button type="submit" name="purchase" value="1" id="service_extra_purchase" class="btn btn-primary">
-        <?php $this->_('ServiceExtrasPlugin.purchase.buy_button'); ?>
+        <?php $this->_('ServiceExtrasPlugin.purchase.continue_payment'); ?>
     </button>
     <?php } ?>
 </div>
@@ -115,18 +214,60 @@
 
 <script type="text/javascript">
     (function () {
+        var productInputs = document.querySelectorAll('.service-extra-product-radio');
+        productInputs.forEach(function (input) {
+            input.addEventListener('change', function () {
+                document.querySelectorAll('.service-extra-product-card').forEach(function (card) {
+                    card.classList.remove('border-primary', 'shadow-sm');
+                });
+                var card = document.querySelector('label[for="' + input.id + '"]');
+                if (card) {
+                    card.classList.add('border-primary', 'shadow-sm');
+                }
+
+                var marker = document.createElement('input');
+                marker.type = 'hidden';
+                marker.name = 'select_product';
+                marker.value = '1';
+                input.form.querySelectorAll('input, select, textarea, button').forEach(function (field) {
+                    if (field !== input && field.name !== '_csrf_token') {
+                        field.disabled = true;
+                    }
+                });
+                input.form.appendChild(marker);
+                input.form.submit();
+            });
+        });
+
         var purchase = document.getElementById('service_extra_purchase');
         var form = purchase ? purchase.form : null;
+        var reviewRequired = document.getElementById('service_extra_review_required');
         if (!form) {
             return;
         }
-        form.querySelectorAll('[name^="configoptions"]').forEach(function (field) {
-            field.addEventListener('change', function () {
-                purchase.disabled = true;
-                purchase.title = '<?php echo $this->Html->safe(
-                    $this->_('ServiceExtrasPlugin.purchase.refresh_required', true)
-                ); ?>';
+
+        form.querySelectorAll('[name^="configoptions"], input:not([name="pricing_id"]), select, textarea')
+            .forEach(function (field) {
+                if (field.name === '_csrf_token' || field.name === 'review' || field.name === 'purchase') {
+                    return;
+                }
+                field.addEventListener('change', function () {
+                    purchase.disabled = true;
+                    if (reviewRequired) {
+                        reviewRequired.classList.remove('d-none');
+                    }
+                });
             });
+
+        form.addEventListener('submit', function (event) {
+            if (event.submitter && event.submitter.name === 'purchase') {
+                purchase.style.pointerEvents = 'none';
+                purchase.setAttribute('aria-disabled', 'true');
+                purchase.textContent = <?php echo json_encode(
+                    $this->_('ServiceExtrasPlugin.purchase.opening_payment', true)
+                ); ?>;
+            }
         });
     }());
 </script>
+<?php } ?>
