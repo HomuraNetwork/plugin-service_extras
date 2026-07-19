@@ -612,7 +612,7 @@ class ServiceExtrasPlugin extends Plugin
             $data['_csrf_token'],
             $data['review'],
             $data['purchase'],
-            $data['select_product'],
+            $data['select_product_id'],
             $data['displayed_pricing_id'],
             $data['override_price'],
             $data['override_currency'],
@@ -819,9 +819,14 @@ class ServiceExtrasPlugin extends Plugin
         }
 
         $post = $post ?? [];
+        $selected_product_id = (int) ($post['select_product_id'] ?? 0);
+        if ($selected_product_id > 0) {
+            $post['pricing_id'] = $selected_product_id;
+        }
+
         $requested_pricing_id = (int) ($post['pricing_id'] ?? 0);
         $displayed_pricing_id = (int) ($post['displayed_pricing_id'] ?? 0);
-        if (!empty($post['select_product'])
+        if ($selected_product_id > 0
             || ($displayed_pricing_id > 0 && $requested_pricing_id !== $displayed_pricing_id)) {
             unset($post['configoptions']);
             unset($post['review'], $post['purchase']);
@@ -853,7 +858,9 @@ class ServiceExtrasPlugin extends Plugin
         );
         $package_fields_html = new FieldsHtml($package_options);
         $option_logic = $this->optionLogic($selected['package'], $selected['pricing']);
-        $option_logic->setOptionContainerSelector($package_fields_html->getContainerSelector());
+        $option_logic->setOptionContainerSelector(
+            '#service_extra_config_options ' . $package_fields_html->getContainerSelector()
+        );
 
         $extra_module = $this->ModuleManager->initModule($selected['package']->module_id);
         $module_fields_html = null;

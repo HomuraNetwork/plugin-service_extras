@@ -204,10 +204,32 @@ assertSameValue(
     true,
     strpos($tab_view_source, 'service-extra-product-card') !== false
         && strpos($tab_view_source, '<select') === false
+        && strpos($tab_view_source, 'name="select_product_id"') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_select') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_review') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_payment') !== false,
     'The purchase page must use product cards and a guided select, review, and payment flow.'
+);
+assertSameValue(
+    true,
+    strpos($source, "\$post['pricing_id'] = \$selected_product_id") !== false
+        && strpos($tab_view_source, "field.disabled = true") === false
+        && strpos($tab_view_source, 'input[data-type="quantity"]') !== false
+        && strpos($tab_view_source, "input.type = 'number'") !== false,
+    'Product changes must not disable Configurable Options, and quantity options must be directly editable.'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, "Date->cast(\$scheduled_cancellation, 'Y-m-d')") !== false
+        && strpos($tab_view_source, "Date->cast(\$scheduled_cancellation, 'date_time')") === false,
+    'The module-provided service end date must be displayed without a time.'
+);
+assertSameValue(
+    true,
+    substr_count($tab_view_source, 'card card-blesta') >= 3
+        && strpos($tab_view_source, 'service-extra-summary-panel') !== false
+        && strpos($tab_view_source, 'service-extra-config-fields') !== false,
+    'The purchase flow must use Blesta Order-style Bootstrap cards for selection, configuration, and review.'
 );
 assertSameValue(
     true,
