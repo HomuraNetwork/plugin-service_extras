@@ -6,9 +6,7 @@
 <div class="alert alert-success">
     <?php $this->_('ServiceExtrasPlugin.!success.created'); ?>
     <div class="mt-2">
-        <a class="btn btn-primary" href="<?php echo $this->Html->safe(
-            $this->base_uri . 'pay/method/' . (int) $created['invoice_id'] . '/'
-        ); ?>">
+        <a class="btn btn-primary" href="<?php echo $this->Html->safe($invoice_uri ?? '#'); ?>">
             <?php $this->_('ServiceExtrasPlugin.purchase.pay_invoice'); ?>
         </a>
     </div>

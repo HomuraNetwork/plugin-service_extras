@@ -63,6 +63,7 @@ $source = file_get_contents(dirname(__DIR__) . '/service_extras_plugin.php');
 $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rules.php');
 $form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
 $admin_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/admin_main.php');
+$tab_view_source = file_get_contents(dirname(__DIR__) . '/views/default/tab_service_extra.pdt');
 assertSameValue(
     true,
     strpos($source, "'parent_service_id' => \$parent_service->id") !== false,
@@ -119,6 +120,25 @@ assertSameValue(
     2,
     substr_count($admin_controller_source, "setMessage('error', \$errors, false, null, false)"),
     'Admin validation errors must use the Blesta system message partial instead of a plugin-local message.pdt.'
+);
+assertSameValue(
+    true,
+    strpos($source, 'public function getAdminServiceTabs(stdClass $service)') !== false
+        && substr_count($source, 'return $this->serviceTabs($service);') === 2,
+    'Eligible rules must appear on both client and staff service management pages.'
+);
+assertSameValue(
+    false,
+    strpos($source, 'ruleHasAvailableProduct') !== false,
+    'A matching service tab must remain visible when its product configuration is incomplete.'
+);
+assertSameValue(
+    true,
+    strpos($source, "'clients/editinvoice/'") !== false
+        && strpos($source, "'pay/method/'") !== false
+        && strpos($tab_view_source, '$invoice_uri') !== false
+        && strpos($tab_view_source, "'pay/method/'") === false,
+    'Invoice links must use the correct staff or client route for the current service page.'
 );
 
 echo "review regressions: ok\n";

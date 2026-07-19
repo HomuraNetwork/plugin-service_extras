@@ -2,7 +2,7 @@
 
 Service Extras lets customers purchase additional products from an existing active service. Each purchase is stored as a normal Blesta service linked to the original service, invoiced separately, and provisioned after payment.
 
-The purchase page appears only while the customer manages an eligible service. Products do not need to appear while the original service is being ordered.
+The purchase page appears as a separate tab on eligible active services in both the client Manage Service page and the staff Service Detail page. Products do not need to appear while the original service is being ordered.
 
 ## Requirements
 
@@ -42,7 +42,7 @@ Open **Packages > Service Extras** and select **Add Rule**.
 
 | Setting | Purpose |
 | --- | --- |
-| Service Page Name | The separate tab name shown while the customer manages an eligible service. |
+| Service Page Name | The separate tab name shown to clients and staff while managing an eligible active service. |
 | Package Group Filter | Filters the available parent package list while configuring the rule; the group is not saved as an eligibility condition. |
 | Eligible Packages | Packages whose active services may show this page. |
 | Extra Product Group | Filters purchasable packages and is stored on each created child service. |
@@ -52,6 +52,8 @@ Open **Packages > Service Extras** and select **Add Rule**.
 The package selectors use separate Eligible/Offered and Available lists. Click a selected item again to clear its selection, use Ctrl/Command for multiple items, double-click to move an item, or use the arrow buttons. Package groups only filter the Available list; the explicitly selected packages are what the rule saves.
 
 Each rule creates its own service tab. Multiple rules may match the same parent service and appear as separate pages with different names and products.
+
+The service tab remains visible when a matching rule has no currently compatible product. Opening it then displays an availability error so staff can identify product, pricing, or module configuration problems without the entire page disappearing.
 
 ## Customer purchase flow
 

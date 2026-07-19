@@ -250,25 +250,7 @@ class ServiceExtrasPlugin extends Plugin
         return is_array($definition) ? $definition : null;
     }
 
-    private function ruleHasAvailableProduct(stdClass $rule, $parent_package, $parent_service)
-    {
-        $selected_ids = array_fill_keys(array_map('intval', $rule->product_package_ids), true);
-        foreach ($this->Packages->getAllPackagesByGroup(
-            $rule->product_group_id,
-            'active',
-            ['hidden' => true]
-        ) as $package) {
-            if (isset($selected_ids[(int) $package->id])
-                && (int) $package->company_id === (int) $rule->company_id
-                && $this->serviceExtraDefinition($parent_package, $parent_service, $package)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public function getClientServiceTabs(stdClass $service)
+    private function serviceTabs(stdClass $service)
     {
         if (($service->status ?? null) !== 'active') {
             return [];
@@ -281,15 +263,23 @@ class ServiceExtrasPlugin extends Plugin
 
         $tabs = [];
         foreach ($context['rules'] as $rule) {
-            if ($this->ruleHasAvailableProduct($rule, $context['package'], $context['service'])) {
-                $tabs['tabServiceExtraRule' . (int) $rule->id] = [
-                    'name' => $rule->name,
-                    'icon' => 'fas fa-plus-circle'
-                ];
-            }
+            $tabs['tabServiceExtraRule' . (int) $rule->id] = [
+                'name' => $rule->name,
+                'icon' => 'fas fa-plus-circle'
+            ];
         }
 
         return $tabs;
+    }
+
+    public function getClientServiceTabs(stdClass $service)
+    {
+        return $this->serviceTabs($service);
+    }
+
+    public function getAdminServiceTabs(stdClass $service)
+    {
+        return $this->serviceTabs($service);
     }
 
     private function offerings(stdClass $rule, $currency, $parent_package, $parent_service)
@@ -663,8 +653,25 @@ class ServiceExtrasPlugin extends Plugin
         $this->view->set('preview', $preview);
         $this->view->set('scheduled_cancellation', $scheduled_cancellation);
         $this->view->set('created', $created);
+        $this->view->set(
+            'invoice_uri',
+            !empty($created)
+                ? $this->invoiceUri($service, (int) $created['invoice_id'])
+                : null
+        );
         $this->view->set('pricing_totals', $pricing_totals);
 
         return $this->view->fetch();
+    }
+
+    private function invoiceUri(stdClass $service, $invoice_id)
+    {
+        $admin_base_uri = WEBDIR . trim((string) Configure::get('Route.admin'), '/') . '/';
+        if ($this->base_uri === $admin_base_uri) {
+            return $this->base_uri . 'clients/editinvoice/' . (int) $service->client_id
+                . '/' . (int) $invoice_id . '/';
+        }
+
+        return $this->base_uri . 'pay/method/' . (int) $invoice_id . '/';
     }
 }
