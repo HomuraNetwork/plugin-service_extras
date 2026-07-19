@@ -2,68 +2,129 @@
 
 <?php echo $message ?? null; ?>
 <?php
+$parent_package_ids = array_values(array_unique(array_map('intval', (array) ($vars->parent_package_ids ?? []))));
+$product_package_ids = array_values(array_unique(array_map('intval', (array) ($vars->product_package_ids ?? []))));
+$parent_selected = array_fill_keys($parent_package_ids, true);
+$product_selected = array_fill_keys($product_package_ids, true);
+$parent_hidden_options = array_combine($parent_package_ids, $parent_package_ids) ?: [];
+$product_hidden_options = array_combine($product_package_ids, $product_package_ids) ?: [];
+
 $this->Widget->clear();
 $this->Widget->create($this->_($rule_id ? 'AdminMain.form.title_edit' : 'AdminMain.form.title_add', true));
-$this->Form->create();
+$this->Form->create(null, ['id' => 'service-extra-rule-form']);
 ?>
 <div class="mb-3">
     <label class="form-label"><?php $this->_('AdminMain.form.name'); ?></label>
     <?php $this->Form->fieldText('name', $vars->name ?? '', ['class' => 'form-control']); ?>
     <div class="form-text"><?php $this->_('AdminMain.form.name_help'); ?></div>
 </div>
+
+<h6 class="form-section-header"><?php $this->_('AdminMain.form.parent_heading'); ?></h6>
 <div class="mb-3">
-    <label class="form-label"><?php $this->_('AdminMain.form.capability'); ?></label>
-    <?php $this->Form->fieldText('capability', $vars->capability ?? '', ['class' => 'form-control']); ?>
-    <div class="form-text"><?php $this->_('AdminMain.form.capability_help'); ?></div>
-</div>
-<div class="mb-3">
-    <label class="form-label"><?php $this->_('AdminMain.form.parent_package_ids'); ?></label>
-    <?php $this->Form->fieldMultiSelect(
-        'parent_package_ids[]',
-        $packages ?? [],
-        (array) ($vars->parent_package_ids ?? []),
-        ['class' => 'form-select', 'size' => 8]
+    <label class="form-label" for="parent_group_filter"><?php $this->_('AdminMain.form.parent_group_filter'); ?></label>
+    <?php $this->Form->fieldSelect(
+        'parent_group_filter',
+        ['' => $this->_('AdminMain.form.all_groups', true)] + ($groups ?? []),
+        '',
+        ['class' => 'form-select', 'id' => 'parent_group_filter']
     ); ?>
-    <div class="form-text"><?php $this->_('AdminMain.form.parent_packages_help'); ?></div>
+    <div class="form-text"><?php $this->_('AdminMain.form.parent_group_filter_help'); ?></div>
 </div>
-<div class="mb-3">
-    <label class="form-label"><?php $this->_('AdminMain.form.parent_group_ids'); ?></label>
-    <?php $this->Form->fieldMultiSelect(
-        'parent_group_ids[]',
-        $groups ?? [],
-        (array) ($vars->parent_group_ids ?? []),
-        ['class' => 'form-select', 'size' => 6]
-    ); ?>
-    <div class="form-text"><?php $this->_('AdminMain.form.parent_groups_help'); ?></div>
+<div class="dual-select-container mb-4" data-selector="parent-packages">
+    <div class="dual-select-panel">
+        <label class="form-label"><?php $this->_('AdminMain.form.selected_parent_packages'); ?></label>
+        <div class="dual-select-dropzone">
+            <div class="drag-list" id="parent_assigned_packages">
+                <?php foreach (($packages ?? []) as $package_id => $package_name) { ?>
+                    <?php if (!isset($parent_selected[(int) $package_id])) { continue; } ?>
+                    <?php $group_classes = array_map(function ($group_id) { return 'group_' . (int) $group_id; }, $package_group_ids[$package_id] ?? []); ?>
+                    <div class="drag-item <?php echo implode(' ', $group_classes); ?>"
+                         data-value="<?php echo (int) $package_id; ?>" draggable="true"><?php echo $this->Html->safe($package_name); ?></div>
+                <?php } ?>
+            </div>
+        </div>
+        <?php $this->Form->fieldMultiSelect(
+            'parent_package_ids[]',
+            $parent_hidden_options,
+            $parent_package_ids,
+            ['id' => 'parent_package_ids_input', 'style' => 'display:none;']
+        ); ?>
+    </div>
+    <div class="dual-select-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary dual-select-btn" data-direction="assign"
+                title="<?php $this->_('AdminMain.form.select_packages'); ?>"><i class="bi bi-arrow-left"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-primary dual-select-btn" data-direction="unassign"
+                title="<?php $this->_('AdminMain.form.remove_packages'); ?>"><i class="bi bi-arrow-right"></i></button>
+    </div>
+    <div class="dual-select-panel">
+        <label class="form-label"><?php $this->_('AdminMain.form.available_parent_packages'); ?></label>
+        <div class="dual-select-dropzone">
+            <div class="drag-list" id="parent_available_packages">
+                <?php foreach (($packages ?? []) as $package_id => $package_name) { ?>
+                    <?php if (isset($parent_selected[(int) $package_id])) { continue; } ?>
+                    <?php $group_classes = array_map(function ($group_id) { return 'group_' . (int) $group_id; }, $package_group_ids[$package_id] ?? []); ?>
+                    <div class="drag-item <?php echo implode(' ', $group_classes); ?>"
+                         data-value="<?php echo (int) $package_id; ?>" draggable="true"><?php echo $this->Html->safe($package_name); ?></div>
+                <?php } ?>
+            </div>
+        </div>
+    </div>
 </div>
+<div class="form-text mb-4"><?php $this->_('AdminMain.form.parent_packages_help'); ?></div>
+
+<h6 class="form-section-header"><?php $this->_('AdminMain.form.products_heading'); ?></h6>
 <div class="mb-3">
-    <label class="form-label"><?php $this->_('AdminMain.form.product_group_id'); ?></label>
+    <label class="form-label" for="product_group_id"><?php $this->_('AdminMain.form.product_group_id'); ?></label>
     <?php $this->Form->fieldSelect(
         'product_group_id',
         ['' => $this->_('AdminMain.form.select_group', true)] + ($groups ?? []),
         $vars->product_group_id ?? '',
-        ['class' => 'form-select']
+        ['class' => 'form-select', 'id' => 'product_group_id']
     ); ?>
     <div class="form-text"><?php $this->_('AdminMain.form.product_group_help'); ?></div>
 </div>
-<div class="mb-3">
-    <label class="form-label"><?php $this->_('AdminMain.form.required_option_name'); ?></label>
-    <?php $this->Form->fieldText(
-        'required_option_name',
-        $vars->required_option_name ?? '',
-        ['class' => 'form-control']
-    ); ?>
-    <div class="form-text"><?php $this->_('AdminMain.form.required_option_name_help'); ?></div>
+<div class="dual-select-container mb-4" data-selector="product-packages">
+    <div class="dual-select-panel">
+        <label class="form-label"><?php $this->_('AdminMain.form.selected_product_packages'); ?></label>
+        <div class="dual-select-dropzone">
+            <div class="drag-list" id="product_assigned_packages">
+                <?php foreach (($packages ?? []) as $package_id => $package_name) { ?>
+                    <?php if (!isset($product_selected[(int) $package_id])) { continue; } ?>
+                    <?php $group_classes = array_map(function ($group_id) { return 'group_' . (int) $group_id; }, $package_group_ids[$package_id] ?? []); ?>
+                    <div class="drag-item <?php echo implode(' ', $group_classes); ?>"
+                         data-value="<?php echo (int) $package_id; ?>" draggable="true"><?php echo $this->Html->safe($package_name); ?></div>
+                <?php } ?>
+            </div>
+        </div>
+        <?php $this->Form->fieldMultiSelect(
+            'product_package_ids[]',
+            $product_hidden_options,
+            $product_package_ids,
+            ['id' => 'product_package_ids_input', 'style' => 'display:none;']
+        ); ?>
+    </div>
+    <div class="dual-select-controls">
+        <button type="button" class="btn btn-sm btn-outline-primary dual-select-btn" data-direction="assign"
+                title="<?php $this->_('AdminMain.form.select_packages'); ?>"><i class="bi bi-arrow-left"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-primary dual-select-btn" data-direction="unassign"
+                title="<?php $this->_('AdminMain.form.remove_packages'); ?>"><i class="bi bi-arrow-right"></i></button>
+    </div>
+    <div class="dual-select-panel">
+        <label class="form-label"><?php $this->_('AdminMain.form.available_product_packages'); ?></label>
+        <div class="dual-select-dropzone">
+            <div class="drag-list" id="product_available_packages">
+                <?php foreach (($packages ?? []) as $package_id => $package_name) { ?>
+                    <?php if (isset($product_selected[(int) $package_id])) { continue; } ?>
+                    <?php $group_classes = array_map(function ($group_id) { return 'group_' . (int) $group_id; }, $package_group_ids[$package_id] ?? []); ?>
+                    <div class="drag-item <?php echo implode(' ', $group_classes); ?>"
+                         data-value="<?php echo (int) $package_id; ?>" draggable="true"><?php echo $this->Html->safe($package_name); ?></div>
+                <?php } ?>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="mb-3">
-    <label class="form-label"><?php $this->_('AdminMain.form.required_option_values'); ?></label>
-    <?php $this->Form->fieldTextarea(
-        'required_option_values',
-        $vars->required_option_values ?? '',
-        ['class' => 'form-control', 'rows' => 3]
-    ); ?>
-    <div class="form-text"><?php $this->_('AdminMain.form.required_option_values_help'); ?></div>
-</div>
+<div class="form-text mb-4"><?php $this->_('AdminMain.form.product_packages_help'); ?></div>
+
 <div class="mb-3 form-check">
     <?php $this->Form->fieldCheckbox('enabled', '1', ($vars->enabled ?? '1') === '1', ['class' => 'form-check-input', 'id' => 'enabled']); ?>
     <label class="form-check-label" for="enabled"><?php $this->_('AdminMain.form.enabled'); ?></label>
@@ -74,3 +135,175 @@ $this->Form->create();
     <?php $this->Form->fieldSubmit('save', $this->_('AdminMain.form.save', true), ['class' => 'btn btn-primary']); ?>
 </div>
 <?php $this->Form->end(); $this->Widget->end(); ?>
+
+<script type="text/javascript">
+(function () {
+    function initializeSelectors() {
+        var form = document.getElementById('service-extra-rule-form');
+        if (!form || form.dataset.selectorsReady === '1') {
+            return;
+        }
+        form.dataset.selectorsReady = '1';
+
+        var selectors = [
+            {
+                root: form.querySelector('[data-selector="parent-packages"]'),
+                assigned: document.getElementById('parent_assigned_packages'),
+                available: document.getElementById('parent_available_packages'),
+                hidden: document.getElementById('parent_package_ids_input'),
+                filter: document.getElementById('parent_group_filter'),
+                restrictAssigned: false
+            },
+            {
+                root: form.querySelector('[data-selector="product-packages"]'),
+                assigned: document.getElementById('product_assigned_packages'),
+                available: document.getElementById('product_available_packages'),
+                hidden: document.getElementById('product_package_ids_input'),
+                filter: document.getElementById('product_group_id'),
+                restrictAssigned: true
+            }
+        ];
+
+        selectors.forEach(function (selector) {
+            if (!selector.root || !selector.assigned || !selector.available || !selector.hidden) {
+                return;
+            }
+
+            function clearSelection() {
+                selector.root.querySelectorAll('.drag-item.selected').forEach(function (item) {
+                    item.classList.remove('selected');
+                });
+            }
+
+            function matchesFilter(item) {
+                var groupId = selector.filter ? selector.filter.value : '';
+                return groupId === '' || item.classList.contains('group_' + groupId);
+            }
+
+            function applyFilter() {
+                if (selector.restrictAssigned && selector.filter) {
+                    selector.assigned.querySelectorAll('.drag-item').forEach(function (item) {
+                        if (!matchesFilter(item)) {
+                            item.classList.remove('selected');
+                            selector.available.appendChild(item);
+                        }
+                    });
+                }
+
+                selector.available.querySelectorAll('.drag-item').forEach(function (item) {
+                    var visible = matchesFilter(item);
+                    item.style.display = visible ? '' : 'none';
+                    if (!visible) {
+                        item.classList.remove('selected');
+                    }
+                });
+            }
+
+            function moveSelected(direction) {
+                var source = direction === 'assign' ? selector.available : selector.assigned;
+                var target = direction === 'assign' ? selector.assigned : selector.available;
+                source.querySelectorAll('.drag-item.selected').forEach(function (item) {
+                    if (item.style.display !== 'none') {
+                        item.classList.remove('selected');
+                        target.appendChild(item);
+                    }
+                });
+                applyFilter();
+            }
+
+            selector.root.querySelectorAll('.drag-item').forEach(function (item) {
+                item.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    if (event.ctrlKey || event.metaKey) {
+                        item.classList.toggle('selected');
+                    } else if (item.classList.contains('selected')) {
+                        item.classList.remove('selected');
+                    } else {
+                        clearSelection();
+                        item.classList.add('selected');
+                    }
+                });
+                item.addEventListener('dblclick', function () {
+                    item.classList.add('selected');
+                    moveSelected(item.parentElement === selector.available ? 'assign' : 'unassign');
+                });
+                item.addEventListener('dragstart', function (event) {
+                    item.classList.add('dragging');
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', item.dataset.value || '');
+                });
+                item.addEventListener('dragend', function () {
+                    item.classList.remove('dragging');
+                    selector.root.querySelectorAll('.drag-list').forEach(function (list) {
+                        list.classList.remove('drag-over');
+                    });
+                });
+            });
+
+            selector.root.querySelectorAll('.drag-list').forEach(function (list) {
+                list.addEventListener('click', function (event) {
+                    if (event.target === list) {
+                        clearSelection();
+                    }
+                });
+                list.addEventListener('dragover', function (event) {
+                    event.preventDefault();
+                    list.classList.add('drag-over');
+                });
+                list.addEventListener('dragleave', function (event) {
+                    if (!list.contains(event.relatedTarget)) {
+                        list.classList.remove('drag-over');
+                    }
+                });
+                list.addEventListener('drop', function (event) {
+                    var item = selector.root.querySelector('.drag-item.dragging');
+                    if (!item) {
+                        return;
+                    }
+                    event.preventDefault();
+                    list.classList.remove('drag-over');
+                    if (list === selector.assigned || matchesFilter(item)) {
+                        item.classList.remove('selected');
+                        list.appendChild(item);
+                        applyFilter();
+                    }
+                });
+            });
+
+            selector.root.querySelectorAll('[data-direction]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    moveSelected(button.dataset.direction);
+                });
+            });
+            if (selector.filter) {
+                selector.filter.addEventListener('change', applyFilter);
+            }
+            applyFilter();
+
+            selector.sync = function () {
+                selector.hidden.innerHTML = '';
+                selector.assigned.querySelectorAll('.drag-item').forEach(function (item) {
+                    var option = document.createElement('option');
+                    option.value = item.dataset.value;
+                    option.selected = true;
+                    selector.hidden.appendChild(option);
+                });
+            };
+        });
+
+        form.addEventListener('submit', function () {
+            selectors.forEach(function (selector) {
+                if (selector.sync) {
+                    selector.sync();
+                }
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeSelectors);
+    } else {
+        initializeSelectors();
+    }
+}());
+</script>

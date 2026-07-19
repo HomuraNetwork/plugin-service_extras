@@ -15,10 +15,8 @@ $this->Widget->create($this->_('AdminMain.index.title', true));
     <table class="table table-hover mb-0 align-middle">
         <thead><tr>
             <th><?php $this->_('AdminMain.index.name'); ?></th>
-            <th><?php $this->_('AdminMain.index.capability'); ?></th>
             <th><?php $this->_('AdminMain.index.parents'); ?></th>
             <th><?php $this->_('AdminMain.index.products'); ?></th>
-            <th><?php $this->_('AdminMain.index.condition'); ?></th>
             <th><?php $this->_('AdminMain.index.status'); ?></th>
             <th class="text-end"><?php $this->_('AdminMain.index.actions'); ?></th>
         </tr></thead>
@@ -26,26 +24,17 @@ $this->Widget->create($this->_('AdminMain.index.title', true));
         <?php foreach (($rules ?? []) as $rule) { ?>
             <tr>
                 <td><?php echo $this->Html->safe($rule->name); ?></td>
-                <td><code><?php echo $this->Html->safe($rule->capability); ?></code></td>
                 <td>
                     <?php foreach ($rule->parent_package_ids as $package_id) { ?>
                         <div><?php echo $this->Html->safe($packages[$package_id] ?? ('#' . $package_id)); ?></div>
                     <?php } ?>
-                    <?php foreach ($rule->parent_group_ids as $group_id) { ?>
-                        <div><?php echo $this->Html->safe($groups[$group_id] ?? ('#' . $group_id)); ?></div>
-                    <?php } ?>
                 </td>
-                <td><?php echo $this->Html->safe(
-                    $groups[$rule->product_group_id] ?? ('#' . $rule->product_group_id)
-                ); ?></td>
                 <td>
-                    <?php if (!empty($rule->required_option_name)) { ?>
-                        <code><?php echo $this->Html->safe($rule->required_option_name); ?></code>
-                        <?php if (!empty($rule->required_option_values)) { ?>
-                            <div><?php echo $this->Html->safe(implode(', ', $rule->required_option_values)); ?></div>
-                        <?php } ?>
-                    <?php } else { ?>
-                        <span class="text-muted"><?php $this->_('AdminMain.index.no_condition'); ?></span>
+                    <div class="text-muted"><?php echo $this->Html->safe(
+                        $groups[$rule->product_group_id] ?? ('#' . $rule->product_group_id)
+                    ); ?></div>
+                    <?php foreach ($rule->product_package_ids as $package_id) { ?>
+                        <div><?php echo $this->Html->safe($packages[$package_id] ?? ('#' . $package_id)); ?></div>
                     <?php } ?>
                 </td>
                 <td><?php $this->_($rule->enabled === '1' ? 'AdminMain.index.enabled' : 'AdminMain.index.disabled'); ?></td>
@@ -59,7 +48,7 @@ $this->Widget->create($this->_('AdminMain.index.title', true));
             </tr>
         <?php } ?>
         <?php if (empty($rules)) { ?>
-            <tr><td colspan="7" class="text-center text-muted"><?php $this->_('AdminMain.index.empty'); ?></td></tr>
+            <tr><td colspan="5" class="text-center text-muted"><?php $this->_('AdminMain.index.empty'); ?></td></tr>
         <?php } ?>
         </tbody>
     </table>

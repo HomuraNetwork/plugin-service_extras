@@ -19,15 +19,9 @@ class ServiceExtrasPlugin extends Plugin
                 ->setField('id', ['type' => 'int', 'size' => 10, 'unsigned' => true, 'auto_increment' => true])
                 ->setField('company_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
                 ->setField('name', ['type' => 'varchar', 'size' => 255])
-                ->setField('capability', ['type' => 'varchar', 'size' => 128])
                 ->setField('parent_package_ids', ['type' => 'text'])
-                ->setField('parent_group_ids', ['type' => 'text'])
                 ->setField('product_group_id', ['type' => 'int', 'size' => 10, 'unsigned' => true])
-                ->setField(
-                    'required_option_name',
-                    ['type' => 'varchar', 'size' => 128, 'is_null' => true, 'default' => null]
-                )
-                ->setField('required_option_values', ['type' => 'text'])
+                ->setField('product_package_ids', ['type' => 'text'])
                 ->setField('enabled', ['type' => 'char', 'size' => 1, 'default' => '1'])
                 ->setField('date_added', ['type' => 'datetime'])
                 ->setField('date_updated', ['type' => 'datetime'])
@@ -37,6 +31,85 @@ class ServiceExtrasPlugin extends Plugin
         } catch (\Throwable $e) {
             $this->Input->setErrors(['db' => ['create' => $e->getMessage()]]);
         }
+    }
+
+    public function upgrade($current_version, $plugin_id)
+    {
+        if (!version_compare($this->getVersion(), $current_version, '>')
+            || !version_compare($current_version, '1.1.0', '<')) {
+            return;
+        }
+
+        try {
+            $this->Record
+                ->setField('product_package_ids', ['type' => 'text', 'is_null' => true, 'default' => null])
+                ->alter('service_extra_rules');
+
+            $rules = $this->Record->select([
+                'id', 'company_id', 'parent_package_ids', 'parent_group_ids', 'product_group_id'
+            ])->from('service_extra_rules')->fetchAll();
+
+            foreach ($rules as $rule) {
+                $parent_ids = $this->storedIds($rule->parent_package_ids ?? '[]');
+                $parent_group_ids = $this->storedIds($rule->parent_group_ids ?? '[]');
+                if (!empty($parent_group_ids)) {
+                    $rows = $this->Record->select('package_group.package_id')->from('package_group')
+                        ->innerJoin(
+                            'package_groups',
+                            'package_groups.id',
+                            '=',
+                            'package_group.package_group_id',
+                            false
+                        )
+                        ->where('package_group.package_group_id', 'in', $parent_group_ids)
+                        ->where('package_groups.company_id', '=', (int) $rule->company_id)
+                        ->fetchAll();
+                    foreach ($rows as $row) {
+                        $parent_ids[] = (int) $row->package_id;
+                    }
+                }
+
+                $product_ids = [];
+                if ((int) $rule->product_group_id > 0) {
+                    $rows = $this->Record->select('package_group.package_id')->from('package_group')
+                        ->innerJoin('packages', 'packages.id', '=', 'package_group.package_id', false)
+                        ->where('package_group.package_group_id', '=', (int) $rule->product_group_id)
+                        ->where('packages.company_id', '=', (int) $rule->company_id)
+                        ->fetchAll();
+                    foreach ($rows as $row) {
+                        $product_ids[] = (int) $row->package_id;
+                    }
+                }
+
+                $this->Record->where('id', '=', (int) $rule->id)->update('service_extra_rules', [
+                    'parent_package_ids' => json_encode(array_values(array_unique($parent_ids))),
+                    'product_package_ids' => json_encode(array_values(array_unique($product_ids)))
+                ]);
+            }
+
+            Loader::loadModels($this, ['ServiceExtras.ServiceExtraRules']);
+            $plugin_instances = $this->Record->select(['id', 'company_id'])->from('plugins')
+                ->where('dir', '=', 'service_extras')
+                ->fetchAll();
+            foreach ($plugin_instances as $instance) {
+                $this->ServiceExtraRules->syncPluginParentAssociations(
+                    $instance->id,
+                    $instance->company_id
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->Input->setErrors(['db' => ['upgrade' => $e->getMessage()]]);
+        }
+    }
+
+    private function storedIds($value)
+    {
+        $ids = json_decode((string) $value, true);
+        if (!is_array($ids)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map('intval', $ids))));
     }
 
     public function uninstall($plugin_id, $last_instance)
@@ -72,41 +145,6 @@ class ServiceExtrasPlugin extends Plugin
         throw new BadMethodCallException('Unknown Service Extras action: ' . $method);
     }
 
-    private function serviceOptionValue($option)
-    {
-        if (isset($option->option_value) && $option->option_value !== '') {
-            return (string) $option->option_value;
-        }
-        if (isset($option->value) && $option->value !== '') {
-            return (string) $option->value;
-        }
-        if (isset($option->qty)) {
-            return (string) $option->qty;
-        }
-
-        return '';
-    }
-
-    private function matchesRequiredOption(stdClass $service, stdClass $rule)
-    {
-        $required_name = trim((string) ($rule->required_option_name ?? ''));
-        if ($required_name === '') {
-            return true;
-        }
-
-        $allowed_values = array_map('strval', (array) ($rule->required_option_values ?? []));
-        foreach (($service->options ?? []) as $option) {
-            if ((string) ($option->option_name ?? '') !== $required_name) {
-                continue;
-            }
-
-            return empty($allowed_values)
-                || in_array($this->serviceOptionValue($option), $allowed_values, true);
-        }
-
-        return false;
-    }
-
     private function context(stdClass $service, $rule_id = null)
     {
         Loader::loadModels($this, [
@@ -127,32 +165,60 @@ class ServiceExtrasPlugin extends Plugin
             if ($rule_id !== null && (int) $rule->id !== (int) $rule_id) {
                 continue;
             }
-            if ($this->matchesRequiredOption($service, $rule)) {
-                $rules[] = $rule;
-            }
+            $rules[] = $rule;
         }
         if (empty($rules)) {
             return null;
         }
 
-        $capabilities = $this->ModuleManager->moduleRpc(
-            $package->module_id,
-            'getServiceExtraCapabilities',
-            [$package, $service],
-            $service->module_row_id
-        );
-
         return [
             'service' => $service,
             'package' => $package,
-            'rules' => $rules,
-            'capabilities' => is_array($capabilities) ? $capabilities : []
+            'rules' => $rules
         ];
     }
 
-    private function ruleIsAvailable(stdClass $rule, array $capabilities)
+    private function serviceExtraDefinition($parent_package, $parent_service, $extra_package)
     {
-        return array_key_exists($rule->capability, $capabilities);
+        $module_id = (int) ($extra_package->module_id ?? 0);
+        if ($module_id < 1) {
+            return null;
+        }
+
+        $module = $this->ModuleManager->initModule($module_id);
+        if (!$module || !is_callable([$module, 'getServiceExtraDefinition'])) {
+            return null;
+        }
+
+        $module_row_id = (int) ($parent_package->module_id ?? 0) === $module_id
+            ? (int) ($parent_service->module_row_id ?? 0)
+            : null;
+        $definition = $this->ModuleManager->moduleRpc(
+            $module_id,
+            'getServiceExtraDefinition',
+            [$parent_package, $parent_service, $extra_package],
+            $module_row_id
+        );
+
+        return is_array($definition) ? $definition : null;
+    }
+
+    private function ruleHasAvailableProduct(stdClass $rule, $parent_package, $parent_service)
+    {
+        $selected_ids = array_fill_keys(array_map('intval', $rule->product_package_ids), true);
+        foreach ($this->Packages->getAllPackagesByGroup(
+            $rule->product_group_id,
+            'active',
+            ['hidden' => true]
+        ) as $package) {
+            if (isset($selected_ids[(int) $package->id])
+                && (int) $package->company_id === (int) $rule->company_id
+                && $this->serviceExtraDefinition($parent_package, $parent_service, $package)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getClientServiceTabs(stdClass $service)
@@ -168,7 +234,7 @@ class ServiceExtrasPlugin extends Plugin
 
         $tabs = [];
         foreach ($context['rules'] as $rule) {
-            if ($this->ruleIsAvailable($rule, $context['capabilities'])) {
+            if ($this->ruleHasAvailableProduct($rule, $context['package'], $context['service'])) {
                 $tabs['tabServiceExtraRule' . (int) $rule->id] = [
                     'name' => $rule->name,
                     'icon' => 'fas fa-plus-circle'
@@ -179,27 +245,27 @@ class ServiceExtrasPlugin extends Plugin
         return $tabs;
     }
 
-    private function offerings(stdClass $rule, array $capabilities, $currency, $parent_module_id)
+    private function offerings(stdClass $rule, $currency, $parent_package, $parent_service)
     {
-        if (!$this->ruleIsAvailable($rule, $capabilities)) {
-            return [];
-        }
-
-        $capability_info = is_array($capabilities[$rule->capability])
-            ? $capabilities[$rule->capability]
-            : [];
         $offerings = [];
+        $selected_ids = array_fill_keys(array_map('intval', $rule->product_package_ids), true);
         $packages = $this->Packages->getAllPackagesByGroup(
             $rule->product_group_id,
             'active',
             ['hidden' => true]
         );
         foreach ($packages as $package) {
-            if ((int) $package->company_id !== (int) $rule->company_id) {
+            if (!isset($selected_ids[(int) $package->id])
+                || (int) $package->company_id !== (int) $rule->company_id) {
                 continue;
             }
-            if (!empty($capability_info['requires_parent_module_row'])
-                && (int) $package->module_id !== (int) $parent_module_id) {
+
+            $definition = $this->serviceExtraDefinition($parent_package, $parent_service, $package);
+            if (!$definition) {
+                continue;
+            }
+            if (!empty($definition['requires_parent_module_row'])
+                && (int) $package->module_id !== (int) ($parent_package->module_id ?? 0)) {
                 continue;
             }
 
@@ -207,8 +273,8 @@ class ServiceExtrasPlugin extends Plugin
                 if (($pricing->currency ?? null) !== $currency) {
                     continue;
                 }
-                if (!empty($capability_info['allowed_periods'])
-                    && !in_array($pricing->period, (array) $capability_info['allowed_periods'], true)) {
+                if (!empty($definition['allowed_periods'])
+                    && !in_array($pricing->period, (array) $definition['allowed_periods'], true)) {
                     continue;
                 }
 
@@ -217,8 +283,7 @@ class ServiceExtrasPlugin extends Plugin
                     'package' => $package,
                     'pricing' => $pricing,
                     'package_group_id' => (int) $rule->product_group_id,
-                    'capability' => $rule->capability,
-                    'capability_info' => $capability_info
+                    'definition' => $definition
                 ];
             }
         }
@@ -315,7 +380,7 @@ class ServiceExtrasPlugin extends Plugin
         }
 
         $parent_package = $this->Packages->get(($parent_service->package ?? null)->id ?? null);
-        $requires_parent_row = !empty($offering['capability_info']['requires_parent_module_row']);
+        $requires_parent_row = !empty($offering['definition']['requires_parent_module_row']);
         if ($requires_parent_row
             && (!$parent_package || (int) $parent_package->module_id !== (int) $package->module_id)) {
             $this->Input->setErrors([
@@ -410,7 +475,7 @@ class ServiceExtrasPlugin extends Plugin
         Loader::loadHelpers($this, ['CurrencyFormat', 'Date', 'Form', 'Html']);
 
         $context = $this->context($service, $rule_id);
-        if (!$context || !$this->ruleIsAvailable($context['rules'][0], $context['capabilities'])) {
+        if (!$context) {
             $this->Input->setErrors([
                 'service_extra' => ['unavailable' => Language::_('ServiceExtrasPlugin.!error.unavailable', true)]
             ]);
@@ -423,9 +488,9 @@ class ServiceExtrasPlugin extends Plugin
         $currency = $currency_setting->value ?? null;
         $offerings = $this->offerings(
             $rule,
-            $context['capabilities'],
             $currency,
-            $context['package']->module_id
+            $context['package'],
+            $service
         );
         if (empty($offerings)) {
             $this->Input->setErrors([
@@ -463,7 +528,7 @@ class ServiceExtrasPlugin extends Plugin
         $module_fields_html = null;
         if ($extra_module) {
             $extra_module->base_uri = $this->base_uri;
-            if (!empty($selected['capability_info']['requires_parent_module_row'])) {
+            if (!empty($selected['definition']['requires_parent_module_row'])) {
                 $extra_module->setModuleRow($extra_module->getModuleRow($service->module_row_id));
             }
             $module_fields = $extra_module->getClientAddFields($selected['package'], $vars);
@@ -477,16 +542,17 @@ class ServiceExtrasPlugin extends Plugin
         if (!empty($post['preview']) || !empty($post['purchase'])) {
             $formatted_options = $this->PackageOptions->formatOptions($post['configoptions'] ?? []);
             $preview = $this->ModuleManager->moduleRpc(
-                $context['package']->module_id,
+                $selected['package']->module_id,
                 'previewServiceExtra',
                 [
-                    $selected['capability'],
                     $context['package'],
                     $service,
                     $selected['package'],
                     $formatted_options
                 ],
-                $service->module_row_id
+                !empty($selected['definition']['requires_parent_module_row'])
+                    ? $service->module_row_id
+                    : null
             );
 
             if (($errors = $this->ModuleManager->errors())) {

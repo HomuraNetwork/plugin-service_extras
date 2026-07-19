@@ -48,34 +48,6 @@ assertSameValue(
     'Expiry without an explicit timezone must be rejected.'
 );
 
-$software_service = (object) ['options' => [
-    (object) ['option_name' => 'software', 'option_value' => 'plesk', 'qty' => 1]
-]];
-assertSameValue(
-    true,
-    callPrivate($plugin, 'matchesRequiredOption', [
-        $software_service,
-        (object) ['required_option_name' => 'software', 'required_option_values' => ['plesk', 'wordpress']]
-    ]),
-    'A rule must match the parent service Configurable Option internal value.'
-);
-assertSameValue(
-    false,
-    callPrivate($plugin, 'matchesRequiredOption', [
-        $software_service,
-        (object) ['required_option_name' => 'software', 'required_option_values' => ['directadmin']]
-    ]),
-    'A rule must reject a parent service with a different Configurable Option value.'
-);
-assertSameValue(
-    true,
-    callPrivate($plugin, 'matchesRequiredOption', [
-        (object) ['options' => [(object) ['option_name' => 'ipv4', 'option_value' => null, 'qty' => 3]]],
-        (object) ['required_option_name' => 'ipv4', 'required_option_values' => ['3']]
-    ]),
-    'Quantity Configurable Options must be eligible by their selected quantity.'
-);
-
 assertSameValue(
     true,
     is_callable([$plugin, 'tabServiceExtraRule42']),
@@ -83,6 +55,8 @@ assertSameValue(
 );
 
 $source = file_get_contents(dirname(__DIR__) . '/service_extras_plugin.php');
+$rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rules.php');
+$form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
 assertSameValue(
     true,
     strpos($source, "'parent_service_id' => \$parent_service->id") !== false,
@@ -102,6 +76,27 @@ assertSameValue(
     false,
     strpos($source, "'onetime'") !== false,
     'Service Extras must not force product pricing to use the one-time period.'
+);
+assertSameValue(
+    true,
+    strpos($source, "'getServiceExtraDefinition'") !== false,
+    'The selected product package module must define how the extra is provisioned.'
+);
+assertSameValue(
+    true,
+    strpos($rules_source, 'product_package_ids') !== false,
+    'Rules must save explicitly selected offered packages.'
+);
+assertSameValue(
+    false,
+    strpos($rules_source, "'capability'") !== false,
+    'Rules must not require an administrator-entered module capability.'
+);
+assertSameValue(
+    true,
+    strpos($form_source, 'dual-select-container') !== false
+        && strpos($form_source, "item.classList.remove('selected')") !== false,
+    'Package selectors must support moving items and clearing a selection.'
 );
 
 echo "review regressions: ok\n";

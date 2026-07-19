@@ -29,19 +29,13 @@ class AdminMain extends ServiceExtrasController
         if (!$rule) {
             return (object) [
                 'name' => '',
-                'capability' => '',
                 'parent_package_ids' => [],
-                'parent_group_ids' => [],
                 'product_group_id' => '',
-                'required_option_name' => '',
-                'required_option_values' => '',
+                'product_package_ids' => [],
                 'enabled' => '1'
             ];
         }
 
-        if (is_array($rule->required_option_values ?? null)) {
-            $rule->required_option_values = implode(', ', $rule->required_option_values);
-        }
         return $rule;
     }
 
@@ -63,13 +57,26 @@ class AdminMain extends ServiceExtrasController
         }
 
         $groups = [];
-        foreach ($this->PackageGroups->getAll($this->company_id) as $group) {
+        $group_rows = $this->PackageGroups->getAll($this->company_id);
+        foreach ($group_rows as $group) {
             $groups[(int) $group->id] = ($group->name ?? ('Group ' . $group->id))
                 . ' (#' . $group->id . ', ' . ucfirst($group->type) . ')';
         }
 
+        $package_group_ids = [];
+        foreach ($group_rows as $group) {
+            foreach ($this->Packages->getAllPackagesByGroup(
+                $group->id,
+                null,
+                ['hidden' => true]
+            ) as $package) {
+                $package_group_ids[(int) $package->id][] = (int) $group->id;
+            }
+        }
+
         $this->set('packages', $packages);
         $this->set('groups', $groups);
+        $this->set('package_group_ids', $package_group_ids);
     }
 
     public function index()
@@ -86,6 +93,8 @@ class AdminMain extends ServiceExtrasController
             $data = $this->post;
             $data['company_id'] = $this->company_id;
             $data['enabled'] = isset($data['enabled']) ? '1' : '0';
+            $data['parent_package_ids'] = $data['parent_package_ids'] ?? [];
+            $data['product_package_ids'] = $data['product_package_ids'] ?? [];
             $id = $this->ServiceExtraRules->add($data);
             if (($errors = $this->ServiceExtraRules->errors())) {
                 $this->setMessage('error', $errors);
@@ -115,6 +124,8 @@ class AdminMain extends ServiceExtrasController
             $data = $this->post;
             $data['company_id'] = $this->company_id;
             $data['enabled'] = isset($data['enabled']) ? '1' : '0';
+            $data['parent_package_ids'] = $data['parent_package_ids'] ?? [];
+            $data['product_package_ids'] = $data['product_package_ids'] ?? [];
             $this->ServiceExtraRules->edit($id, $data);
             if (($errors = $this->ServiceExtraRules->errors())) {
                 $this->setMessage('error', $errors);

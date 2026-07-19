@@ -7,7 +7,7 @@ The purchase page appears only while the customer manages an eligible service. P
 ## Requirements
 
 - Blesta 6.0.0-b4 or later
-- A module that supports the required Service Extras capability
+- A module that supports Service Extras product definitions and purchase previews
 - A package group containing the products customers may purchase
 
 ## Installation
@@ -30,7 +30,7 @@ The package pricing controls the service lifecycle:
 - Day, week, month, or year pricing creates a normally renewing service.
 - A compatible module may supply a specific end time. Service Extras shows that time before purchase and schedules the child service to end at that time.
 
-A module may restrict a capability to selected billing periods. For example, the VirtFusion Traffic Block capability accepts one-time pricing only, while Service Extras itself supports both one-time and recurring products.
+A module may restrict a product type to selected billing periods. For example, the VirtFusion Traffic Block product accepts one-time pricing only, while Service Extras itself supports both one-time and recurring products.
 
 When these products must not appear during initial ordering, do not associate the product group with the parent Standard Group through Blesta's native Addon Group relationship. The Service Extras rule provides the post-provision relationship instead.
 
@@ -41,17 +41,15 @@ Open **Packages > Service Extras** and select **Add Rule**.
 | Setting | Purpose |
 | --- | --- |
 | Service Page Name | The separate tab name shown while the customer manages an eligible service. |
-| Module Capability | The function offered by the parent service module, such as `traffic_block` or `bandwidth_reset`. |
-| Eligible Parent Packages | Individual packages whose active services may show this page. |
-| Eligible Parent Package Groups | Optional groups whose packages may show this page. |
-| Product Group | The group containing the products and pricing offered on this page. |
-| Required Configurable Option Name | Optional internal option name that must exist on the parent service, such as `software`. |
-| Allowed Configurable Option Values | Optional exact internal values that may use the rule. |
+| Package Group Filter | Filters the available parent package list while configuring the rule; the group is not saved as an eligibility condition. |
+| Eligible Packages | Packages whose active services may show this page. |
+| Extra Product Group | Filters purchasable packages and is stored on each created child service. |
+| Offered Packages | The specific packages customers may purchase from this page. |
 | Enabled | Controls whether the page is available for new purchases. |
 
-Each rule creates its own service tab. Multiple rules may match the same parent service and appear as separate pages with different names, products, capabilities, and eligibility requirements.
+The package selectors use separate Eligible/Offered and Available lists. Click a selected item again to clear its selection, use Ctrl/Command for multiple items, double-click to move an item, or use the arrow buttons. Package groups only filter the Available list; the explicitly selected packages are what the rule saves.
 
-After adding a new package to an eligible parent group, save the rule again so Service Extras is attached to that package.
+Each rule creates its own service tab. Multiple rules may match the same parent service and appear as separate pages with different names and products.
 
 ## Customer purchase flow
 
@@ -74,7 +72,7 @@ One-time pricing prevents renewal invoices but does not cancel the service recor
 
 ## VirtFusion Traffic Block example
 
-The [VirtFusion Direct Provisioning Mod](https://github.com/HomuraNetwork/module-virtfusion_direct_provisioning_mod) supports the `traffic_block` capability.
+The [VirtFusion Direct Provisioning Mod](https://github.com/HomuraNetwork/module-virtfusion_direct_provisioning_mod) identifies a Traffic Block from the selected package's **Product Type**. No capability name needs to be entered in Service Extras.
 
 Recommended setup:
 
@@ -83,6 +81,6 @@ Recommended setup:
 - Use one-time pricing for the Traffic Block package.
 - Add an `amount` Configurable Option whose internal value is the number of GB to provision.
 - Place the package in a dedicated product group that is not attached to the parent VPS order group.
-- Create a Service Extras rule for the eligible VPS packages and select that product group.
+- Create a Service Extras rule, select the eligible VPS packages, select the Traffic Block product group, and move the Traffic Block packages to **Offered Packages**.
 
 The purchase preview shows the current VirtFusion traffic period end. After payment, the module checks the period again, updates the child service to the actual activation-period end when necessary, and provisions the block. Closing the Blesta service does not remove the remote block early.
