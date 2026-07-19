@@ -170,7 +170,7 @@ class ServiceExtraRules extends AppModel
         }
 
         $vars = $this->format($vars);
-        $vars['date_added'] = date('c');
+        $vars['date_added'] = $this->dateToUtc(date('c'));
         $vars['date_updated'] = $vars['date_added'];
         $this->Record->insert('service_extra_rules', $vars, [
             'company_id', 'name', 'parent_package_ids', 'product_group_id',
@@ -189,7 +189,7 @@ class ServiceExtraRules extends AppModel
         }
 
         $vars = $this->format($vars);
-        $vars['date_updated'] = date('c');
+        $vars['date_updated'] = $this->dateToUtc(date('c'));
         $this->Record->where('id', '=', (int) $id)
             ->where('company_id', '=', (int) $vars['company_id'])
             ->update('service_extra_rules', $vars, [

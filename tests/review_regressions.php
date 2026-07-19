@@ -99,6 +99,11 @@ assertSameValue(
     'Rules must not require an administrator-entered module capability.'
 );
 assertSameValue(
+    2,
+    substr_count($rules_source, "\$this->dateToUtc(date('c'))"),
+    'Rule timestamps must be converted to the SQL DATETIME format used by Blesta.'
+);
+assertSameValue(
     true,
     strpos($source, "version_compare(\$current_version, '1.1.2', '<')") !== false
         && strpos($source, 'setField($column, null, false)') !== false,
