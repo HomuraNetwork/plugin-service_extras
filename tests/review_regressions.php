@@ -64,6 +64,8 @@ $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rule
 $orders_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_orders.php');
 $form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
 $admin_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/admin_main.php');
+$client_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/client_main.php');
+$base_controller_source = file_get_contents(dirname(__DIR__) . '/service_extras_controller.php');
 $tab_view_source = file_get_contents(dirname(__DIR__) . '/views/default/tab_service_extra.pdt');
 $offerings_source = substr(
     $source,
@@ -204,7 +206,9 @@ assertSameValue(
     true,
     strpos($tab_view_source, 'service-extra-product') !== false
         && strpos($tab_view_source, '<select') === false
+        && strpos($tab_view_source, 'type="button"') !== false
         && strpos($tab_view_source, 'name="select_product_id"') !== false
+        && strpos($tab_view_source, 'data-has-configurable-options') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_select') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_review') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_payment') !== false,
@@ -213,10 +217,13 @@ assertSameValue(
 assertSameValue(
     true,
     strpos($source, "\$post['pricing_id'] = \$selected_product_id") !== false
+        && strpos($source, 'public function getServiceExtraConfiguration(') !== false
+        && strpos($tab_view_source, 'fetch(requestUrl') !== false
+        && strpos($tab_view_source, 'event.preventDefault()') !== false
         && strpos($tab_view_source, "field.disabled = true") === false
         && strpos($tab_view_source, 'input[data-type="quantity"]') !== false
         && strpos($tab_view_source, "input.type = 'number'") !== false,
-    'Product changes must not disable Configurable Options, and quantity options must be directly editable.'
+    'Product changes must load Configurable Options without a full page refresh.'
 );
 assertSameValue(
     true,
@@ -246,7 +253,8 @@ assertSameValue(
 assertSameValue(
     true,
     strpos($tab_view_source, "if (!is_array(\$preview))") !== false
-        && strpos($tab_view_source, "if (\$has_configuration)") !== false
+        && strpos($tab_view_source, 'id="service_extra_configuration"') !== false
+        && strpos($tab_view_source, "\$has_configuration ? '' : 'hidden'") !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.no_configuration') === false
         && strpos($tab_view_source, 'name="back"') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.back') !== false
@@ -266,8 +274,8 @@ assertSameValue(
     strpos($source, 'private function serviceExtraOptionIds(') !== false
         && strpos($source, '$pricing->package_id ?? $package->id') !== false
         && strpos($source, '$option->hidden') === false
-        && strpos($source, "'allow' => \$service_extra_option_ids") !== false
-        && strpos($source, 'array_fill_keys($service_extra_option_ids, true)') !== false
+        && strpos($source, "'allow' => \$option_ids") !== false
+        && strpos($source, 'array_fill_keys($option_ids, true)') !== false
         && strpos($source, "['addable' => 1]") === false,
     'Rule-offered Extra products must display all attached Configurable Options with matching pricing.'
 );
@@ -276,6 +284,17 @@ assertSameValue(
     substr_count($tab_view_source, '->generate()') === 2
         && strpos($tab_view_source, '->generate(null, $this->view)') === false,
     'Configurable Options must use the same FieldsHtml rendering path as the Order plugin.'
+);
+assertSameValue(
+    true,
+    strpos($base_controller_source, 'protected function outputPackageOptions(') !== false
+        && strpos($base_controller_source, 'if (!$this->isAjax())') !== false
+        && strpos($base_controller_source, 'getServiceExtraConfiguration(') !== false
+        && strpos($client_controller_source, '$this->requireLogin();') !== false
+        && strpos($client_controller_source, '$this->Session->read(\'blesta_client_id\')') !== false
+        && strpos($client_controller_source, 'outputPackageOptions($this->client_id)') !== false
+        && strpos($admin_controller_source, 'public function packageOptions()') !== false,
+    'AJAX configuration requests must use an authenticated client or staff endpoint.'
 );
 assertSameValue(
     true,

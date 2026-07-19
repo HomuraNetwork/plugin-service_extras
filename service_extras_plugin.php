@@ -794,6 +794,125 @@ class ServiceExtrasPlugin extends Plugin
         return $logic;
     }
 
+    private function configurationForOffering(
+        array $selected,
+        stdClass $service,
+        $parent_package,
+        $currency,
+        array &$vars
+    ) {
+        $option_ids = $this->serviceExtraOptionIds(
+            $selected['package'],
+            $selected['pricing'],
+            $currency
+        );
+        if (isset($vars['configoptions']) && is_array($vars['configoptions'])) {
+            $vars['configoptions'] = array_intersect_key(
+                $vars['configoptions'],
+                array_fill_keys($option_ids, true)
+            );
+        }
+
+        $field_vars = (object) $vars;
+        $package_options = $this->PackageOptions->getFields(
+            $selected['pricing']->package_id ?? $selected['package']->id,
+            $selected['pricing']->term,
+            $selected['pricing']->period,
+            $selected['pricing']->currency,
+            $field_vars,
+            $currency,
+            [
+                'new' => empty($vars['configoptions']) ? 1 : 0,
+                'allow' => $option_ids
+            ]
+        );
+        $package_fields_html = new FieldsHtml($package_options);
+        $option_logic = $this->optionLogic(
+            $selected['package'],
+            $selected['pricing'],
+            $option_ids
+        );
+        $option_logic->setOptionContainerSelector(
+            '#service_extra_config_options ' . $package_fields_html->getContainerSelector()
+        );
+
+        $same_module = (int) ($selected['package']->module_id ?? 0)
+            === (int) ($parent_package->module_id ?? 0);
+        $extra_module = $this->ModuleManager->initModule($selected['package']->module_id);
+        $module_fields_html = null;
+        if ($extra_module) {
+            $extra_module->base_uri = $this->base_uri;
+            if ($same_module) {
+                $extra_module->setModuleRow($extra_module->getModuleRow($service->module_row_id));
+            }
+            $module_fields = $extra_module->getClientAddFields($selected['package'], $field_vars);
+            $module_fields_html = new FieldsHtml($module_fields);
+        }
+
+        return [
+            'option_ids' => $option_ids,
+            'package_fields_html' => $package_fields_html,
+            'module_fields_html' => $module_fields_html,
+            'option_logic' => $option_logic,
+            'extra_module' => $extra_module,
+            'same_module' => $same_module
+        ];
+    }
+
+    public function getServiceExtraConfiguration(
+        stdClass $service,
+        $rule_id,
+        $pricing_id,
+        array $vars = []
+    ) {
+        Loader::loadModels($this, ['Clients', 'PackageOptions']);
+
+        $context = $this->context($service, (int) $rule_id);
+        if (!$context || ($context['service']->status ?? null) !== 'active') {
+            $this->Input->setErrors([
+                'service_extra' => ['unavailable' => Language::_('ServiceExtrasPlugin.!error.unavailable', true)]
+            ]);
+            return null;
+        }
+
+        $service = $context['service'];
+        $currency_setting = $this->Clients->getSetting($service->client_id, 'default_currency');
+        $currency = $currency_setting->value ?? null;
+        $offerings = $this->offerings($context['rules'][0], $currency);
+        $selected = $offerings[(int) $pricing_id] ?? null;
+        if (!$selected) {
+            $this->Input->setErrors([
+                'service_extra' => ['selection' => Language::_('ServiceExtrasPlugin.!error.selection', true)]
+            ]);
+            return null;
+        }
+
+        $configuration = $this->configurationForOffering(
+            $selected,
+            $service,
+            $context['package'],
+            $currency,
+            $vars
+        );
+        $module_html = $configuration['module_fields_html']
+            ? $configuration['module_fields_html']->generate()
+            : '';
+        $options_html = $configuration['package_fields_html']->generate();
+        $html = $module_html;
+        if (trim(strip_tags($module_html)) !== '' && trim(strip_tags($options_html)) !== '') {
+            $html .= '<hr>';
+        }
+        $html .= $options_html;
+        $html .= $configuration['option_logic']->getJavascript();
+
+        return [
+            'pricing_id' => (int) $pricing_id,
+            'has_configuration' => trim(strip_tags($module_html . $options_html)) !== '',
+            'has_configurable_options' => !empty($configuration['option_ids']),
+            'html' => $html
+        ];
+    }
+
     private function tabServiceExtra(
         $rule_id,
         stdClass $service,
@@ -859,55 +978,32 @@ class ServiceExtrasPlugin extends Plugin
             $selected = $offerings[$selected_id];
         }
 
-        $same_module = (int) ($selected['package']->module_id ?? 0)
-            === (int) ($context['package']->module_id ?? 0);
         $selected['definition'] = [];
         $selected['use_parent_module_row'] = false;
-
-        $service_extra_option_ids = $this->serviceExtraOptionIds(
-            $selected['package'],
-            $selected['pricing'],
-            $currency
-        );
-        if (isset($post['configoptions']) && is_array($post['configoptions'])) {
-            $post['configoptions'] = array_intersect_key(
-                $post['configoptions'],
-                array_fill_keys($service_extra_option_ids, true)
-            );
-        }
-        $vars = (object) $post;
-        $package_options = $this->PackageOptions->getFields(
-            $selected['pricing']->package_id ?? $selected['package']->id,
-            $selected['pricing']->term,
-            $selected['pricing']->period,
-            $selected['pricing']->currency,
-            $vars,
+        $configuration = $this->configurationForOffering(
+            $selected,
+            $service,
+            $context['package'],
             $currency,
-            [
-                'new' => empty($post['configoptions']) ? 1 : 0,
-                'allow' => $service_extra_option_ids
-            ]
+            $post
         );
-        $package_fields_html = new FieldsHtml($package_options);
-        $option_logic = $this->optionLogic(
-            $selected['package'],
-            $selected['pricing'],
-            $service_extra_option_ids
-        );
-        $option_logic->setOptionContainerSelector(
-            '#service_extra_config_options ' . $package_fields_html->getContainerSelector()
-        );
+        $package_fields_html = $configuration['package_fields_html'];
+        $module_fields_html = $configuration['module_fields_html'];
+        $option_logic = $configuration['option_logic'];
+        $extra_module = $configuration['extra_module'];
+        $same_module = $configuration['same_module'];
 
-        $extra_module = $this->ModuleManager->initModule($selected['package']->module_id);
-        $module_fields_html = null;
-        if ($extra_module) {
-            $extra_module->base_uri = $this->base_uri;
-            if ($same_module) {
-                $extra_module->setModuleRow($extra_module->getModuleRow($service->module_row_id));
-            }
-            $module_fields = $extra_module->getClientAddFields($selected['package'], $vars);
-            $module_fields_html = new FieldsHtml($module_fields);
+        foreach ($offerings as $offering_pricing_id => &$offering) {
+            $option_ids = (int) $offering_pricing_id === (int) $selected_id
+                ? $configuration['option_ids']
+                : $this->serviceExtraOptionIds(
+                    $offering['package'],
+                    $offering['pricing'],
+                    $currency
+                );
+            $offering['has_configurable_options'] = !empty($option_ids);
         }
+        unset($offering);
 
         $preview = null;
         $created = null;
@@ -1038,6 +1134,14 @@ class ServiceExtrasPlugin extends Plugin
         );
         $this->view->set('pricing_totals', $pricing_totals);
         $this->view->set('unpaid_order_ttl_hours', self::UNPAID_ORDER_TTL_HOURS);
+        $controller = $this->base_uri === WEBDIR . trim((string) Configure::get('Route.admin'), '/') . '/'
+            ? 'admin_main'
+            : 'client_main';
+        $this->view->set(
+            'configuration_uri',
+            $this->base_uri . 'plugin/service_extras/' . $controller . '/packageoptions/'
+                . (int) $service->id . '/' . (int) $rule->id . '/'
+        );
 
         return $this->view->fetch();
     }

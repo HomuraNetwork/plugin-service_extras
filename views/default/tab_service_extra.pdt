@@ -50,7 +50,10 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
     }
 </style>
 
-<div class="service-extra-checkout">
+<div
+    class="service-extra-checkout"
+    data-configuration-uri="<?php echo $this->Html->safe($configuration_uri ?? ''); ?>"
+>
     <header class="border-bottom pb-3 mb-4">
         <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -142,10 +145,13 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                 ?>
             <div class="col-md-6 col-xl-4 mb-3">
                 <button
-                    type="<?php echo $selected_product ? 'button' : 'submit'; ?>"
-                    <?php echo $selected_product
-                        ? 'aria-current="true"'
-                        : 'name="select_product_id" value="' . (int) $pricing_id . '"'; ?>
+                    type="button"
+                    name="select_product_id"
+                    value="<?php echo (int) $pricing_id; ?>"
+                    data-has-configurable-options="<?php echo !empty(
+                        $offering['has_configurable_options']
+                    ) ? '1' : '0'; ?>"
+                    <?php echo $selected_product ? 'aria-current="true"' : ''; ?>
                     class="btn <?php echo $selected_product
                         ? 'btn-primary'
                         : 'btn-outline-secondary'; ?> service-extra-product w-100 h-100 p-3"
@@ -161,11 +167,14 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
         </div>
     </section>
 
-    <?php if ($has_configuration) { ?>
-    <section class="border-top pt-4 mb-4">
+    <section
+        class="border-top pt-4 mb-4"
+        id="service_extra_configuration"
+        <?php echo $has_configuration ? '' : 'hidden'; ?>
+    >
         <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.configuration'); ?></h5>
         <p class="text-muted mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.configuration_help'); ?></p>
-        <div class="service-extra-config" id="service_extra_config_options">
+        <div class="service-extra-config" id="service_extra_config_options" aria-live="polite">
             <?php echo $module_html; ?>
             <?php if (trim(strip_tags($module_html)) !== '' && trim(strip_tags($options_html)) !== '') { ?>
             <hr>
@@ -173,7 +182,6 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
             <?php echo $options_html; ?>
         </div>
     </section>
-    <?php } ?>
 
     <div class="d-flex justify-content-end">
         <button type="submit" name="review" value="1" class="btn btn-success">
@@ -258,7 +266,13 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
 
     <script type="text/javascript">
         (function () {
-            document.querySelectorAll('#service_extra_config_options input[data-type="quantity"]')
+            var checkout = document.querySelector('.service-extra-checkout');
+            if (!checkout) {
+                return;
+            }
+
+            function normalizeQuantityInputs(container) {
+                (container || document).querySelectorAll('input[data-type="quantity"]')
                 .forEach(function (input) {
                     var min = input.getAttribute('data-min');
                     var max = input.getAttribute('data-max');
@@ -273,6 +287,156 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                     input.step = step !== null && step !== '' ? step : '1';
                     input.style.display = '';
                 });
+            }
+
+            function configurationValues(container) {
+                var params = new URLSearchParams();
+                if (!container) {
+                    return params;
+                }
+                container.querySelectorAll('input, select, textarea').forEach(function (field) {
+                    if (!field.name || field.disabled
+                        || ((field.type === 'checkbox' || field.type === 'radio') && !field.checked)) {
+                        return;
+                    }
+                    if (field.tagName === 'SELECT' && field.multiple) {
+                        Array.from(field.selectedOptions).forEach(function (option) {
+                            params.append(field.name, option.value);
+                        });
+                        return;
+                    }
+                    params.append(field.name, field.value);
+                });
+                return params;
+            }
+
+            function executeScripts(container) {
+                container.querySelectorAll('script').forEach(function (script) {
+                    var replacement = document.createElement('script');
+                    Array.from(script.attributes).forEach(function (attribute) {
+                        replacement.setAttribute(attribute.name, attribute.value);
+                    });
+                    replacement.text = script.text;
+                    script.replaceWith(replacement);
+                });
+            }
+
+            normalizeQuantityInputs(document.getElementById('service_extra_config_options'));
+
+            var form = checkout.querySelector('form');
+            var configurationUri = checkout.getAttribute('data-configuration-uri') || '';
+            var configurationSection = document.getElementById('service_extra_configuration');
+            var configurationContainer = document.getElementById('service_extra_config_options');
+            var pricingInput = form ? form.querySelector('input[name="pricing_id"]') : null;
+            var displayedPricingInput = form
+                ? form.querySelector('input[name="displayed_pricing_id"]')
+                : null;
+            var savedValues = {};
+            var activeRequest = null;
+
+            checkout.querySelectorAll('button[name="select_product_id"]').forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    if (!form) {
+                        return;
+                    }
+                    if (!window.fetch || !window.URLSearchParams || !configurationUri) {
+                        var directSelection = document.createElement('input');
+                        directSelection.type = 'hidden';
+                        directSelection.name = 'select_product_id';
+                        directSelection.value = String(button.value || '');
+                        form.appendChild(directSelection);
+                        form.submit();
+                        return;
+                    }
+
+                    event.preventDefault();
+                    var pricingId = String(button.value || '');
+                    if (!pricingId || (pricingInput && pricingInput.value === pricingId)) {
+                        return;
+                    }
+
+                    if (pricingInput && configurationContainer) {
+                        savedValues[String(pricingInput.value)] = configurationValues(
+                            configurationContainer
+                        ).toString();
+                    }
+                    if (activeRequest) {
+                        activeRequest.abort();
+                    }
+                    activeRequest = typeof AbortController === 'function'
+                        ? new AbortController()
+                        : null;
+
+                    button.setAttribute('aria-busy', 'true');
+                    button.classList.add('disabled');
+                    if (configurationSection && button.dataset.hasConfigurableOptions === '0') {
+                        configurationSection.hidden = true;
+                    }
+
+                    var requestUrl = configurationUri + encodeURIComponent(pricingId) + '/';
+                    var stored = savedValues[pricingId] || '';
+                    if (stored) {
+                        requestUrl += '?' + stored;
+                    }
+                    fetch(requestUrl, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        signal: activeRequest ? activeRequest.signal : undefined
+                    }).then(function (response) {
+                        return response.json().then(function (data) {
+                            if (!response.ok) {
+                                throw new Error('Unable to load product configuration.');
+                            }
+                            return data;
+                        });
+                    }).then(function (data) {
+                        if (!data || String(data.pricing_id) !== pricingId) {
+                            throw new Error('Invalid product configuration response.');
+                        }
+                        if (pricingInput) {
+                            pricingInput.value = pricingId;
+                        }
+                        if (displayedPricingInput) {
+                            displayedPricingInput.value = pricingId;
+                        }
+                        checkout.querySelectorAll('button[name="select_product_id"]').forEach(
+                            function (product) {
+                                var selected = String(product.value) === pricingId;
+                                product.classList.toggle('btn-primary', selected);
+                                product.classList.toggle('btn-outline-secondary', !selected);
+                                if (selected) {
+                                    product.setAttribute('aria-current', 'true');
+                                } else {
+                                    product.removeAttribute('aria-current');
+                                }
+                            }
+                        );
+                        if (configurationContainer && configurationSection) {
+                            configurationContainer.innerHTML = data.html || '';
+                            configurationSection.hidden = !data.has_configuration;
+                            executeScripts(configurationContainer);
+                            normalizeQuantityInputs(configurationContainer);
+                        }
+                    }).catch(function (error) {
+                        if (error && error.name === 'AbortError') {
+                            return;
+                        }
+                        var fallbackSelection = document.createElement('input');
+                        fallbackSelection.type = 'hidden';
+                        fallbackSelection.name = 'select_product_id';
+                        fallbackSelection.value = pricingId;
+                        form.appendChild(fallbackSelection);
+                        form.submit();
+                    }).finally(function () {
+                        button.removeAttribute('aria-busy');
+                        button.classList.remove('disabled');
+                    });
+                });
+            });
 
             var purchase = document.getElementById('service_extra_purchase');
             if (!purchase || !purchase.form) {

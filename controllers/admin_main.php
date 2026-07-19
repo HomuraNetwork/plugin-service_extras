@@ -10,6 +10,7 @@ class AdminMain extends ServiceExtrasController
             'PackageGroups',
             'Packages',
             'PluginManager',
+            'Services',
             'ServiceExtras.ServiceExtraRules'
         ]);
 
@@ -151,5 +152,10 @@ class AdminMain extends ServiceExtrasController
             $this->flashMessage('message', Language::_('AdminMain.!success.deleted', true));
         }
         $this->redirect($this->base_uri . 'plugin/service_extras/admin_main/');
+    }
+
+    public function packageOptions()
+    {
+        return $this->outputPackageOptions();
     }
 }
