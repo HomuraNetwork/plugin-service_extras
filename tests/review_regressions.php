@@ -221,16 +221,37 @@ assertSameValue(
 assertSameValue(
     true,
     strpos($tab_view_source, "Date->cast(\$scheduled_cancellation, 'Y-m-d')") !== false
+        && strpos($tab_view_source, "\$preview['valid_until']") !== false
+        && strpos($tab_view_source, '$service_end_date') !== false
         && strpos($tab_view_source, "Date->cast(\$scheduled_cancellation, 'date_time')") === false,
-    'The module-provided service end date must be displayed without a time.'
+    'The module-provided period end date must be preferred and displayed without a time.'
+);
+$service_end_position = strpos(
+    $tab_view_source,
+    "ServiceExtrasPlugin.purchase.service_ends'); ?></dt>"
+);
+$review_total_position = strpos(
+    $tab_view_source,
+    '<div class="col-lg-4 service-extra-review-total'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, "['_service_extra']['parent_reference']") !== false
+        && strpos($tab_view_source, '$service_reference') !== false
+        && $service_end_position !== false
+        && $review_total_position !== false
+        && $service_end_position < $review_total_position,
+    'Review must identify the parent service using the module reference and keep its end date with the details.'
 );
 assertSameValue(
     true,
     strpos($tab_view_source, "if (!is_array(\$preview))") !== false
+        && strpos($tab_view_source, "if (\$has_configuration)") !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.no_configuration') === false
         && strpos($tab_view_source, 'name="back"') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.back') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.review_again') === false,
-    'Selection and configuration must be separate from review, with a Back action on the review page.'
+    'Selection and configuration must be separate from review, hide empty configuration, and provide Back.'
 );
 assertSameValue(
     true,
@@ -260,8 +281,10 @@ assertSameValue(
     true,
     strpos($tab_view_source, 'window.location.replace') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.continue_payment') !== false
+        && strpos($tab_view_source, 'purchase.disabled = true') === false
+        && strpos($tab_view_source, "purchase.style.pointerEvents = 'none'") !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.pay_invoice') === false,
-    'A completed purchase must continue directly into billing without instructing the client to find an invoice.'
+    'Payment submission must retain purchase=1 and continue directly into billing.'
 );
 assertSameValue(
     true,

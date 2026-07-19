@@ -5,6 +5,13 @@ $status_label = ucwords(str_replace('_', ' ', (string) ($service->status ?? ''))
 $module_html = isset($module_fields_html) ? $module_fields_html->generate() : '';
 $options_html = isset($package_fields_html) ? $package_fields_html->generate() : '';
 $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
+$service_reference = $preview['_service_extra']['parent_reference'] ?? ($service->name ?? '');
+$service_end_date = is_array($preview) && is_scalar($preview['valid_until'] ?? null)
+    ? trim((string) $preview['valid_until'])
+    : '';
+if ($service_end_date === '' && !empty($scheduled_cancellation)) {
+    $service_end_date = $this->Date->cast($scheduled_cancellation, 'Y-m-d');
+}
 ?>
 
 <style type="text/css">
@@ -54,7 +61,7 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
         </div>
         <dl class="row mb-0 mt-3">
             <dt class="col-sm-3 text-muted"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></dt>
-            <dd class="col-sm-9"><?php echo $this->Html->safe($service->name ?? ''); ?></dd>
+            <dd class="col-sm-9"><?php echo $this->Html->safe($service_reference); ?></dd>
             <dt class="col-sm-3 text-muted"><?php $this->_('ServiceExtrasPlugin.purchase.target_package'); ?></dt>
             <dd class="col-sm-9"><?php echo $this->Html->safe($parent_package->name ?? ''); ?></dd>
             <?php if (!empty($service->date_renews)) { ?>
@@ -154,23 +161,19 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
         </div>
     </section>
 
+    <?php if ($has_configuration) { ?>
     <section class="border-top pt-4 mb-4">
         <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.configuration'); ?></h5>
         <p class="text-muted mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.configuration_help'); ?></p>
         <div class="service-extra-config" id="service_extra_config_options">
-            <?php if ($has_configuration) { ?>
-                <?php echo $module_html; ?>
-                <?php if (trim(strip_tags($module_html)) !== '' && trim(strip_tags($options_html)) !== '') { ?>
-                <hr>
-                <?php } ?>
-                <?php echo $options_html; ?>
-            <?php } else { ?>
-                <p class="text-muted mb-0"><?php $this->_(
-                    'ServiceExtrasPlugin.purchase.no_configuration'
-                ); ?></p>
+            <?php echo $module_html; ?>
+            <?php if (trim(strip_tags($module_html)) !== '' && trim(strip_tags($options_html)) !== '') { ?>
+            <hr>
             <?php } ?>
+            <?php echo $options_html; ?>
         </div>
     </section>
+    <?php } ?>
 
     <div class="d-flex justify-content-end">
         <button type="submit" name="review" value="1" class="btn btn-success">
@@ -194,17 +197,21 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
                     ); ?></strong></dd>
                     <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></dt>
                     <dd class="col-sm-8"><strong><?php echo $this->Html->safe(
-                        $service->name ?? ''
+                        $service_reference
                     ); ?></strong></dd>
                     <?php foreach ($preview as $key => $value) { ?>
                         <?php if (is_scalar($value)
                             && !in_array($key, ['notice', '_service_extra', 'product'], true)
-                            && !($key === 'valid_until' && !empty($scheduled_cancellation))) { ?>
+                            && !($key === 'valid_until' && $service_end_date !== '')) { ?>
                     <dt class="col-sm-4"><?php echo $this->Html->safe(
                         ucwords(str_replace('_', ' ', $key))
                     ); ?></dt>
                     <dd class="col-sm-8"><strong><?php echo $this->Html->safe($value); ?></strong></dd>
                         <?php } ?>
+                    <?php } ?>
+                    <?php if ($service_end_date !== '') { ?>
+                    <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.service_ends'); ?></dt>
+                    <dd class="col-sm-8"><strong><?php echo $this->Html->safe($service_end_date); ?></strong></dd>
                     <?php } ?>
                 </dl>
                 <?php if (!empty($preview['notice'])) { ?>
@@ -214,12 +221,6 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
                 <?php } ?>
             </div>
             <div class="col-lg-4 service-extra-review-total pl-lg-4 mt-3 mt-lg-0">
-                <?php if (!empty($scheduled_cancellation)) { ?>
-                <div class="text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.service_ends'); ?></div>
-                <div class="font-weight-bold mb-3"><strong><?php echo $this->Html->safe(
-                    $this->Date->cast($scheduled_cancellation, 'Y-m-d')
-                ); ?></strong></div>
-                <?php } ?>
                 <?php if (!empty($pricing_totals)) { ?>
                 <div class="text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.due_now'); ?></div>
                 <h4><?php echo $this->CurrencyFormat->format(
@@ -240,7 +241,6 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
         <button type="submit" name="back" value="1" class="btn btn-outline-secondary">
             <?php $this->_('ServiceExtrasPlugin.purchase.back'); ?>
         </button>
-        <?php if ($scheduled_cancellation !== false) { ?>
         <button
             type="submit"
             name="purchase"
@@ -250,7 +250,6 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
         >
             <?php $this->_('ServiceExtrasPlugin.purchase.continue_payment'); ?>
         </button>
-        <?php } ?>
     </div>
     <?php } ?>
 
@@ -281,7 +280,8 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
             }
             purchase.form.addEventListener('submit', function (event) {
                 if (event.submitter && event.submitter.name === 'purchase') {
-                    purchase.disabled = true;
+                    purchase.style.pointerEvents = 'none';
+                    purchase.setAttribute('aria-disabled', 'true');
                     purchase.textContent = <?php echo json_encode(
                         $this->_('ServiceExtrasPlugin.purchase.opening_payment', true)
                     ); ?>;
