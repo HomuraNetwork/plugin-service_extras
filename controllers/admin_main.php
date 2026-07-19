@@ -97,7 +97,7 @@ class AdminMain extends ServiceExtrasController
             $data['product_package_ids'] = $data['product_package_ids'] ?? [];
             $id = $this->ServiceExtraRules->add($data);
             if (($errors = $this->ServiceExtraRules->errors())) {
-                $this->setMessage('error', $errors);
+                $this->setMessage('error', $errors, false, null, false);
                 $vars = (object) $data;
             } else {
                 $this->ServiceExtraRules->syncPluginParentAssociations($this->pluginId(), $this->company_id);
@@ -128,7 +128,7 @@ class AdminMain extends ServiceExtrasController
             $data['product_package_ids'] = $data['product_package_ids'] ?? [];
             $this->ServiceExtraRules->edit($id, $data);
             if (($errors = $this->ServiceExtraRules->errors())) {
-                $this->setMessage('error', $errors);
+                $this->setMessage('error', $errors, false, null, false);
                 $vars = (object) $data;
             } else {
                 $this->ServiceExtraRules->syncPluginParentAssociations($this->pluginId(), $this->company_id);

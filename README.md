@@ -78,8 +78,9 @@ Recommended setup:
 
 - Enable Traffic Blocks in the VirtFusion module row.
 - Create a VirtFusion package with **Product Type** set to **Traffic Block**.
+- Enter the package's fixed **Block Size (GB)**.
 - Use one-time pricing for the Traffic Block package.
-- Add an `amount` Configurable Option whose internal value is the number of GB to provision.
+- To let the customer choose the capacity, add a Quantity or Dropdown Configurable Option and enter its numeric ID in the package's **Override Configurable Option ID** field. The submitted GB value overrides the fixed size.
 - Place the package in a dedicated product group that is not attached to the parent VPS order group.
 - Create a Service Extras rule, select the eligible VPS packages, select the Traffic Block product group, and move the Traffic Block packages to **Offered Packages**.
 

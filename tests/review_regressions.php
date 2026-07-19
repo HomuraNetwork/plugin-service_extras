@@ -57,6 +57,7 @@ assertSameValue(
 $source = file_get_contents(dirname(__DIR__) . '/service_extras_plugin.php');
 $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rules.php');
 $form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
+$admin_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/admin_main.php');
 assertSameValue(
     true,
     strpos($source, "'parent_service_id' => \$parent_service->id") !== false,
@@ -97,6 +98,11 @@ assertSameValue(
     strpos($form_source, 'dual-select-container') !== false
         && strpos($form_source, "item.classList.remove('selected')") !== false,
     'Package selectors must support moving items and clearing a selection.'
+);
+assertSameValue(
+    2,
+    substr_count($admin_controller_source, "setMessage('error', \$errors, false, null, false)"),
+    'Admin validation errors must use the Blesta system message partial instead of a plugin-local message.pdt.'
 );
 
 echo "review regressions: ok\n";
