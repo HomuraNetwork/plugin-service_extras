@@ -53,6 +53,11 @@ assertSameValue(
     is_callable([$plugin, 'tabServiceExtraRule42']),
     'Each enabled rule must be dispatchable as an independent service tab.'
 );
+assertSameValue(
+    ['capability', 'parent_group_ids', 'required_option_name', 'required_option_values'],
+    callPrivate($plugin, 'legacyRuleColumns'),
+    'The upgrade must remove every obsolete rule column from the original schema.'
+);
 
 $source = file_get_contents(dirname(__DIR__) . '/service_extras_plugin.php');
 $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rules.php');
@@ -92,6 +97,12 @@ assertSameValue(
     false,
     strpos($rules_source, "'capability'") !== false,
     'Rules must not require an administrator-entered module capability.'
+);
+assertSameValue(
+    true,
+    strpos($source, "version_compare(\$current_version, '1.1.2', '<')") !== false
+        && strpos($source, 'setField($column, null, false)') !== false,
+    'Version 1.1.2 must drop obsolete rule columns left by earlier installations.'
 );
 assertSameValue(
     true,

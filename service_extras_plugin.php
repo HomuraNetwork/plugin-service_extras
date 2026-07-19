@@ -35,56 +35,63 @@ class ServiceExtrasPlugin extends Plugin
 
     public function upgrade($current_version, $plugin_id)
     {
-        if (!version_compare($this->getVersion(), $current_version, '>')
-            || !version_compare($current_version, '1.1.0', '<')) {
+        if (!version_compare($this->getVersion(), $current_version, '>')) {
             return;
         }
 
         try {
-            $this->Record
-                ->setField('product_package_ids', ['type' => 'text', 'is_null' => true, 'default' => null])
-                ->alter('service_extra_rules');
-
-            $rules = $this->Record->select([
-                'id', 'company_id', 'parent_package_ids', 'parent_group_ids', 'product_group_id'
-            ])->from('service_extra_rules')->fetchAll();
-
-            foreach ($rules as $rule) {
-                $parent_ids = $this->storedIds($rule->parent_package_ids ?? '[]');
-                $parent_group_ids = $this->storedIds($rule->parent_group_ids ?? '[]');
-                if (!empty($parent_group_ids)) {
-                    $rows = $this->Record->select('package_group.package_id')->from('package_group')
-                        ->innerJoin(
-                            'package_groups',
-                            'package_groups.id',
-                            '=',
-                            'package_group.package_group_id',
-                            false
-                        )
-                        ->where('package_group.package_group_id', 'in', $parent_group_ids)
-                        ->where('package_groups.company_id', '=', (int) $rule->company_id)
-                        ->fetchAll();
-                    foreach ($rows as $row) {
-                        $parent_ids[] = (int) $row->package_id;
-                    }
+            if (version_compare($current_version, '1.1.0', '<')) {
+                if (!$this->tableColumnExists('service_extra_rules', 'product_package_ids')) {
+                    $this->Record
+                        ->setField('product_package_ids', ['type' => 'text', 'is_null' => true, 'default' => null])
+                        ->alter('service_extra_rules');
                 }
 
-                $product_ids = [];
-                if ((int) $rule->product_group_id > 0) {
-                    $rows = $this->Record->select('package_group.package_id')->from('package_group')
-                        ->innerJoin('packages', 'packages.id', '=', 'package_group.package_id', false)
-                        ->where('package_group.package_group_id', '=', (int) $rule->product_group_id)
-                        ->where('packages.company_id', '=', (int) $rule->company_id)
-                        ->fetchAll();
-                    foreach ($rows as $row) {
-                        $product_ids[] = (int) $row->package_id;
-                    }
-                }
+                $rules = $this->Record->select([
+                    'id', 'company_id', 'parent_package_ids', 'parent_group_ids', 'product_group_id'
+                ])->from('service_extra_rules')->fetchAll();
 
-                $this->Record->where('id', '=', (int) $rule->id)->update('service_extra_rules', [
-                    'parent_package_ids' => json_encode(array_values(array_unique($parent_ids))),
-                    'product_package_ids' => json_encode(array_values(array_unique($product_ids)))
-                ]);
+                foreach ($rules as $rule) {
+                    $parent_ids = $this->storedIds($rule->parent_package_ids ?? '[]');
+                    $parent_group_ids = $this->storedIds($rule->parent_group_ids ?? '[]');
+                    if (!empty($parent_group_ids)) {
+                        $rows = $this->Record->select('package_group.package_id')->from('package_group')
+                            ->innerJoin(
+                                'package_groups',
+                                'package_groups.id',
+                                '=',
+                                'package_group.package_group_id',
+                                false
+                            )
+                            ->where('package_group.package_group_id', 'in', $parent_group_ids)
+                            ->where('package_groups.company_id', '=', (int) $rule->company_id)
+                            ->fetchAll();
+                        foreach ($rows as $row) {
+                            $parent_ids[] = (int) $row->package_id;
+                        }
+                    }
+
+                    $product_ids = [];
+                    if ((int) $rule->product_group_id > 0) {
+                        $rows = $this->Record->select('package_group.package_id')->from('package_group')
+                            ->innerJoin('packages', 'packages.id', '=', 'package_group.package_id', false)
+                            ->where('package_group.package_group_id', '=', (int) $rule->product_group_id)
+                            ->where('packages.company_id', '=', (int) $rule->company_id)
+                            ->fetchAll();
+                        foreach ($rows as $row) {
+                            $product_ids[] = (int) $row->package_id;
+                        }
+                    }
+
+                    $this->Record->where('id', '=', (int) $rule->id)->update('service_extra_rules', [
+                        'parent_package_ids' => json_encode(array_values(array_unique($parent_ids))),
+                        'product_package_ids' => json_encode(array_values(array_unique($product_ids)))
+                    ]);
+                }
+            }
+
+            if (version_compare($current_version, '1.1.2', '<')) {
+                $this->dropLegacyRuleColumns();
             }
 
             Loader::loadModels($this, ['ServiceExtras.ServiceExtraRules']);
@@ -99,6 +106,46 @@ class ServiceExtrasPlugin extends Plugin
             }
         } catch (\Throwable $e) {
             $this->Input->setErrors(['db' => ['upgrade' => $e->getMessage()]]);
+        }
+    }
+
+    private function tableColumnExists($table, $column)
+    {
+        $statement = $this->Record->query(
+            'SELECT COUNT(*) AS `count` FROM `information_schema`.`COLUMNS`'
+            . ' WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = ? AND `COLUMN_NAME` = ?',
+            $table,
+            $column
+        );
+        $result = $statement->fetch();
+        $count = is_array($result)
+            ? ($result['count'] ?? 0)
+            : (is_object($result) ? ($result->count ?? 0) : 0);
+        return (int) $count > 0;
+    }
+
+    private function legacyRuleColumns()
+    {
+        return [
+            'capability',
+            'parent_group_ids',
+            'required_option_name',
+            'required_option_values'
+        ];
+    }
+
+    private function dropLegacyRuleColumns()
+    {
+        $alter = false;
+        foreach ($this->legacyRuleColumns() as $column) {
+            if ($this->tableColumnExists('service_extra_rules', $column)) {
+                $this->Record->setField($column, null, false);
+                $alter = true;
+            }
+        }
+
+        if ($alter) {
+            $this->Record->alter('service_extra_rules');
         }
     }
 

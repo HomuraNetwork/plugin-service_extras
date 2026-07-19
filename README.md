@@ -20,6 +20,8 @@ Upload the plugin to:
 
 Install and enable **Service Extras** under Blesta plugin settings. Rules are managed under **Packages > Service Extras**.
 
+When updating an existing installation, replace the plugin files and run **Upgrade** for Service Extras in Blesta. Version 1.1.2 removes obsolete rule columns from the original schema, including the former Module Capability field.
+
 ## Prepare a product group
 
 Create a separate package group for the products that will be offered after a service has been provisioned. Add one or more packages to that group and configure their normal Blesta pricing and Configurable Options.
