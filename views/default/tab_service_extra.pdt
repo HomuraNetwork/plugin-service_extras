@@ -8,232 +8,77 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
 ?>
 
 <style type="text/css">
-    .service-extra-checkout {
-        --service-extra-primary: #0d6efd;
-        --service-extra-border: rgba(0, 0, 0, .125);
-        --service-extra-muted: #6c757d;
+    .service-extra-checkout .service-extra-product {
+        min-height: 8.5rem;
+        text-align: left;
+        white-space: normal;
     }
-    .service-extra-checkout .service-extra-hero {
-        background: linear-gradient(135deg, rgba(13, 110, 253, .09), rgba(13, 110, 253, .02));
-        border: 1px solid rgba(13, 110, 253, .16);
-    }
-    .service-extra-checkout .service-extra-service-grid {
-        margin-bottom: -1rem;
-    }
-    .service-extra-checkout .service-extra-service-item {
-        margin-bottom: 1rem;
-    }
-    .service-extra-checkout .service-extra-meta-label {
-        color: var(--service-extra-muted);
+    .service-extra-checkout .service-extra-product-name {
         display: block;
-        font-size: .75rem;
-        font-weight: 600;
-        letter-spacing: .04em;
-        margin-bottom: .2rem;
-        text-transform: uppercase;
-    }
-    .service-extra-checkout .service-extra-meta-value {
-        display: block;
+        font-size: 1rem;
         font-weight: 600;
         overflow-wrap: anywhere;
     }
-    .service-extra-checkout .service-extra-status {
-        background: #d1e7dd;
-        border-radius: 999px;
-        color: #0f5132;
-        display: inline-block;
-        font-size: .75rem;
-        font-weight: 700;
-        padding: .3rem .65rem;
-    }
-    .service-extra-checkout .service-extra-stepper {
-        display: flex;
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-    .service-extra-checkout .service-extra-step {
-        align-items: center;
-        color: var(--service-extra-muted);
-        display: flex;
-        flex: 1 1 0;
-        font-size: .875rem;
-        font-weight: 600;
-        min-width: 0;
-        position: relative;
-    }
-    .service-extra-checkout .service-extra-step:not(:last-child)::after {
-        background: #dee2e6;
-        content: '';
-        height: 2px;
-        left: calc(50% + 1.5rem);
-        position: absolute;
-        right: calc(-50% + 1.5rem);
-        top: 1rem;
-    }
-    .service-extra-checkout .service-extra-step-number {
-        align-items: center;
-        background: #e9ecef;
-        border: 2px solid #e9ecef;
-        border-radius: 50%;
-        color: var(--service-extra-muted);
-        display: inline-flex;
-        flex: 0 0 2rem;
-        height: 2rem;
-        justify-content: center;
-        margin-right: .6rem;
-        position: relative;
-        width: 2rem;
-        z-index: 1;
-    }
-    .service-extra-checkout .service-extra-step.is-active,
-    .service-extra-checkout .service-extra-step.is-complete {
-        color: #212529;
-    }
-    .service-extra-checkout .service-extra-step.is-active .service-extra-step-number,
-    .service-extra-checkout .service-extra-step.is-complete .service-extra-step-number {
-        background: var(--service-extra-primary);
-        border-color: var(--service-extra-primary);
-        color: #fff;
-    }
-    .service-extra-checkout .service-extra-step.is-complete:not(:last-child)::after {
-        background: var(--service-extra-primary);
-    }
-    .service-extra-checkout .service-extra-product-card {
-        appearance: none;
-        background: #fff;
-        border: 1px solid var(--service-extra-border);
-        color: inherit;
-        cursor: pointer;
+    .service-extra-checkout .service-extra-product-price {
         display: block;
-        min-height: 100%;
-        padding: 0;
-        text-align: left;
-        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-        width: 100%;
-    }
-    .service-extra-checkout .service-extra-product-card:not(.is-selected):hover,
-    .service-extra-checkout .service-extra-product-card:not(.is-selected):focus {
-        border-color: var(--service-extra-primary);
-        box-shadow: 0 .25rem .75rem rgba(13, 110, 253, .12);
-        outline: 0;
-        transform: translateY(-1px);
-    }
-    .service-extra-checkout .service-extra-product-card.is-selected {
-        border-color: var(--service-extra-primary);
-        box-shadow: 0 0 0 1px var(--service-extra-primary), 0 .25rem .75rem rgba(13, 110, 253, .1);
-        cursor: default;
-    }
-    .service-extra-checkout .service-extra-selected-mark {
-        align-items: center;
-        background: var(--service-extra-primary);
-        border-radius: 50%;
-        color: #fff;
-        display: inline-flex;
-        flex: 0 0 1.5rem;
-        font-size: .8rem;
-        height: 1.5rem;
-        justify-content: center;
-        width: 1.5rem;
-    }
-    .service-extra-checkout .service-extra-price {
-        color: var(--service-extra-primary);
         font-size: 1.15rem;
         font-weight: 700;
+        margin-top: 1rem;
     }
-    .service-extra-checkout .font-weight-bold {
-        font-weight: 700 !important;
-    }
-    .service-extra-checkout .service-extra-config-fields .generated_fields_div .form-group,
-    .service-extra-checkout .service-extra-config-fields .generated_fields_div .mb-3 {
+    .service-extra-checkout .service-extra-config .generated_fields_div .form-group,
+    .service-extra-checkout .service-extra-config .generated_fields_div .mb-3 {
         margin-bottom: 1rem !important;
     }
-    .service-extra-checkout .service-extra-config-fields .generated_fields_div label {
-        cursor: pointer;
-    }
-    .service-extra-checkout .service-extra-config-fields input[data-type="quantity"] {
+    .service-extra-checkout .service-extra-config input[data-type="quantity"] {
         max-width: 12rem;
     }
-    .service-extra-checkout .service-extra-review-row {
-        border-bottom: 1px solid #eef0f2;
-        padding: .65rem 0;
+    .service-extra-checkout .service-extra-review dt {
+        color: #6c757d;
+        font-weight: 400;
     }
-    .service-extra-checkout .service-extra-review-row:last-child {
-        border-bottom: 0;
-    }
-    .service-extra-checkout .service-extra-summary-panel {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: .5rem;
-    }
-    .service-extra-checkout .service-extra-total {
-        color: var(--service-extra-primary);
-        font-size: 1.4rem;
-        font-weight: 700;
-    }
-    @media (max-width: 767.98px) {
-        .service-extra-checkout .service-extra-stepper {
-            display: block;
-        }
-        .service-extra-checkout .service-extra-step {
-            margin-bottom: .75rem;
-        }
-        .service-extra-checkout .service-extra-step:last-child {
-            margin-bottom: 0;
-        }
-        .service-extra-checkout .service-extra-step::after {
-            display: none;
+    @media (min-width: 992px) {
+        .service-extra-checkout .service-extra-review-total {
+            border-left: 1px solid rgba(128, 128, 128, .25);
         }
     }
 </style>
 
 <div class="service-extra-checkout">
-    <div class="service-extra-hero rounded p-3 p-md-4 mb-4">
-        <div class="d-md-flex justify-content-between align-items-start mb-3">
-            <div class="mb-2 mb-md-0">
+    <header class="border-bottom pb-3 mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
                 <h4 class="mb-1"><?php echo $this->Html->safe($rule->name ?? ''); ?></h4>
                 <p class="text-muted mb-0"><?php $this->_('ServiceExtrasPlugin.purchase.intro'); ?></p>
             </div>
-            <span class="service-extra-status"><?php echo $this->Html->safe($status_label); ?></span>
+            <span class="badge badge-success bg-success ml-3"><?php echo $this->Html->safe($status_label); ?></span>
         </div>
-        <div class="row service-extra-service-grid">
-            <div class="col-sm-6 service-extra-service-item">
-                <span class="service-extra-meta-label"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></span>
-                <span class="service-extra-meta-value"><?php echo $this->Html->safe($service->name ?? ''); ?></span>
-            </div>
-            <div class="col-sm-6 service-extra-service-item">
-                <span class="service-extra-meta-label"><?php $this->_('ServiceExtrasPlugin.purchase.target_package'); ?></span>
-                <span class="service-extra-meta-value"><?php echo $this->Html->safe($parent_package->name ?? ''); ?></span>
-            </div>
+        <dl class="row mb-0 mt-3">
+            <dt class="col-sm-3 text-muted"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></dt>
+            <dd class="col-sm-9"><?php echo $this->Html->safe($service->name ?? ''); ?></dd>
+            <dt class="col-sm-3 text-muted"><?php $this->_('ServiceExtrasPlugin.purchase.target_package'); ?></dt>
+            <dd class="col-sm-9"><?php echo $this->Html->safe($parent_package->name ?? ''); ?></dd>
             <?php if (!empty($service->date_renews)) { ?>
-            <div class="col-sm-6 service-extra-service-item">
-                <span class="service-extra-meta-label"><?php $this->_('ServiceExtrasPlugin.purchase.renews'); ?></span>
-                <span class="service-extra-meta-value"><?php echo $this->Html->safe(
-                    $this->Date->cast($service->date_renews, 'date')
-                ); ?></span>
-            </div>
+            <dt class="col-sm-3 text-muted"><?php $this->_('ServiceExtrasPlugin.purchase.renews'); ?></dt>
+            <dd class="col-sm-9 mb-0"><?php echo $this->Html->safe(
+                $this->Date->cast($service->date_renews, 'date')
+            ); ?></dd>
             <?php } ?>
-        </div>
-    </div>
+        </dl>
+    </header>
 
-    <div class="card card-blesta card-steps mb-4">
-        <div class="card-body py-3 px-3 px-md-4">
-            <ol class="service-extra-stepper" aria-label="Checkout progress">
-                <?php foreach ([
-                    1 => 'ServiceExtrasPlugin.purchase.step_select',
-                    2 => 'ServiceExtrasPlugin.purchase.step_review',
-                    3 => 'ServiceExtrasPlugin.purchase.step_payment'
-                ] as $step => $language_key) { ?>
-                <li class="service-extra-step<?php echo $checkout_step === $step
-                    ? ' is-active'
-                    : ($checkout_step > $step ? ' is-complete' : ''); ?>">
-                    <span class="service-extra-step-number"><?php echo (int) $step; ?></span>
-                    <span><?php $this->_($language_key); ?></span>
-                </li>
-                <?php } ?>
-            </ol>
-        </div>
-    </div>
+    <nav class="nav nav-pills nav-fill mb-4" aria-label="Checkout progress">
+        <?php foreach ([
+            1 => 'ServiceExtrasPlugin.purchase.step_select',
+            2 => 'ServiceExtrasPlugin.purchase.step_review',
+            3 => 'ServiceExtrasPlugin.purchase.step_payment'
+        ] as $step => $language_key) { ?>
+        <span class="nav-item nav-link<?php echo $checkout_step === $step
+            ? ' active'
+            : ($checkout_step > $step ? ' text-success' : ' text-muted'); ?>">
+            <?php echo (int) $step; ?>. <?php $this->_($language_key); ?>
+        </span>
+        <?php } ?>
+    </nav>
 
     <?php if (!empty($created)) { ?>
     <div class="alert alert-success mb-0">
@@ -251,186 +96,165 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
     <input type="hidden" name="pricing_id" value="<?php echo (int) $selected_id; ?>">
     <input type="hidden" name="displayed_pricing_id" value="<?php echo (int) $selected_id; ?>">
 
-    <section class="card card-blesta mb-4">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.choose_heading'); ?></h5>
-            <p class="text-muted small mb-0"><?php $this->_('ServiceExtrasPlugin.purchase.choose_help'); ?></p>
-        </div>
-        <div class="card-body pb-2">
-            <div class="row" id="service_extra_products">
-                <?php foreach ($offerings as $pricing_id => $offering) { ?>
-                    <?php
-                    $pricing = $offering['pricing'];
-                    $period = $pricing->period === 'onetime'
-                        ? ($periods['onetime'] ?? 'One Time')
-                        : (int) $pricing->term . ' ' . (
-                            (int) $pricing->term === 1
-                                ? ($periods[$pricing->period] ?? ucfirst($pricing->period))
-                                : ($periods_plural[$pricing->period] ?? ucfirst($pricing->period) . 's')
-                        );
-                    $price = $this->CurrencyFormat->format($pricing->price, $pricing->currency);
-                    $billing = $price;
-                    if ($pricing->period !== 'onetime') {
-                        $renewal_price = $this->CurrencyFormat->format(
-                            $pricing->price_renews ?? $pricing->price,
-                            $pricing->currency
-                        );
-                        $billing = abs(
-                            (float) ($pricing->price_renews ?? $pricing->price) - (float) $pricing->price
-                        ) > 0.00001
-                            ? $this->_(
-                                'ServiceExtrasPlugin.purchase.price_intro',
-                                true,
-                                $price,
-                                $renewal_price,
-                                $period
-                            )
-                            : $this->_('ServiceExtrasPlugin.purchase.price_recurring', true, $price, $period);
-                    }
-                    $selected_product = (int) $selected_id === (int) $pricing_id;
-                    ?>
-                <div class="col-md-6 col-xl-4 mb-3">
-                    <button
-                        type="<?php echo $selected_product ? 'button' : 'submit'; ?>"
-                        <?php echo $selected_product
-                            ? 'aria-current="true"'
-                            : 'name="select_product_id" value="' . (int) $pricing_id . '"'; ?>
-                        class="card service-extra-product-card<?php echo $selected_product ? ' is-selected' : ''; ?>"
-                    >
-                        <span class="card-body d-flex flex-column">
-                            <span class="d-flex justify-content-between align-items-start mb-3">
-                                <span class="service-extra-meta-value pr-2">
-                                    <?php echo $this->Html->safe(
-                                        $offering['package']->name ?? ('Package #' . $offering['package']->id)
-                                    ); ?>
-                                </span>
-                                <?php if ($selected_product) { ?>
-                                <span class="service-extra-selected-mark" aria-label="Selected">&#10003;</span>
-                                <?php } ?>
-                            </span>
-                            <span class="service-extra-price mt-auto"><?php echo $this->Html->safe($billing); ?></span>
-                            <span class="text-muted small mt-1"><?php echo $this->Html->safe($period); ?></span>
-                        </span>
-                    </button>
-                </div>
-                <?php } ?>
-            </div>
-        </div>
-    </section>
+    <?php if (!is_array($preview)) { ?>
+    <section class="mb-4">
+        <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.choose_heading'); ?></h5>
+        <p class="text-muted mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.choose_help'); ?></p>
 
-    <section class="card card-blesta mb-4" id="service_extra_configuration">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.configuration'); ?></h5>
-            <p class="text-muted small mb-0"><?php $this->_('ServiceExtrasPlugin.purchase.configuration_help'); ?></p>
-        </div>
-        <div class="card-body service-extra-config-fields" id="service_extra_config_options">
-            <?php if ($has_configuration) { ?>
-                <?php echo $module_html; ?>
-                <?php if (trim(strip_tags($module_html)) !== '' && trim(strip_tags($options_html)) !== '') { ?>
-                <hr class="my-4">
-                <?php } ?>
-                <?php echo $options_html; ?>
-            <?php } else { ?>
-                <div class="text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.no_configuration'); ?></div>
+        <div class="row" id="service_extra_products">
+            <?php foreach ($offerings as $pricing_id => $offering) { ?>
+                <?php
+                $pricing = $offering['pricing'];
+                $period = $pricing->period === 'onetime'
+                    ? ($periods['onetime'] ?? 'One Time')
+                    : (int) $pricing->term . ' ' . (
+                        (int) $pricing->term === 1
+                            ? ($periods[$pricing->period] ?? ucfirst($pricing->period))
+                            : ($periods_plural[$pricing->period] ?? ucfirst($pricing->period) . 's')
+                    );
+                $price = $this->CurrencyFormat->format($pricing->price, $pricing->currency);
+                $billing = $price;
+                if ($pricing->period !== 'onetime') {
+                    $renewal_price = $this->CurrencyFormat->format(
+                        $pricing->price_renews ?? $pricing->price,
+                        $pricing->currency
+                    );
+                    $billing = abs(
+                        (float) ($pricing->price_renews ?? $pricing->price) - (float) $pricing->price
+                    ) > 0.00001
+                        ? $this->_(
+                            'ServiceExtrasPlugin.purchase.price_intro',
+                            true,
+                            $price,
+                            $renewal_price,
+                            $period
+                        )
+                        : $this->_('ServiceExtrasPlugin.purchase.price_recurring', true, $price, $period);
+                }
+                $selected_product = (int) $selected_id === (int) $pricing_id;
+                ?>
+            <div class="col-md-6 col-xl-4 mb-3">
+                <button
+                    type="<?php echo $selected_product ? 'button' : 'submit'; ?>"
+                    <?php echo $selected_product
+                        ? 'aria-current="true"'
+                        : 'name="select_product_id" value="' . (int) $pricing_id . '"'; ?>
+                    class="btn <?php echo $selected_product
+                        ? 'btn-primary'
+                        : 'btn-outline-secondary'; ?> service-extra-product w-100 h-100 p-3"
+                >
+                    <span class="service-extra-product-name"><?php echo $this->Html->safe(
+                        $offering['package']->name ?? ('Package #' . $offering['package']->id)
+                    ); ?></span>
+                    <span class="service-extra-product-price"><?php echo $this->Html->safe($billing); ?></span>
+                    <span class="d-block small mt-1"><?php echo $this->Html->safe($period); ?></span>
+                </button>
+            </div>
             <?php } ?>
         </div>
     </section>
 
-    <?php if (is_array($preview)) { ?>
-    <section class="card card-blesta border-primary mb-4" id="service_extra_review">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-0"><?php $this->_('ServiceExtrasPlugin.purchase.review_heading'); ?></h5>
+    <section class="border-top pt-4 mb-4">
+        <h5 class="mb-1"><?php $this->_('ServiceExtrasPlugin.purchase.configuration'); ?></h5>
+        <p class="text-muted mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.configuration_help'); ?></p>
+        <div class="service-extra-config" id="service_extra_config_options">
+            <?php if ($has_configuration) { ?>
+                <?php echo $module_html; ?>
+                <?php if (trim(strip_tags($module_html)) !== '' && trim(strip_tags($options_html)) !== '') { ?>
+                <hr>
+                <?php } ?>
+                <?php echo $options_html; ?>
+            <?php } else { ?>
+                <p class="text-muted mb-0"><?php $this->_(
+                    'ServiceExtrasPlugin.purchase.no_configuration'
+                ); ?></p>
+            <?php } ?>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-lg-7 pr-lg-4">
-                    <div class="service-extra-review-row row no-gutters">
-                        <div class="col-sm-4 text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.product'); ?></div>
-                        <div class="col-sm-8 font-weight-bold"><?php echo $this->Html->safe(
-                            $selected['package']->name ?? ''
-                        ); ?></div>
-                    </div>
-                    <div class="service-extra-review-row row no-gutters">
-                        <div class="col-sm-4 text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></div>
-                        <div class="col-sm-8 font-weight-bold"><?php echo $this->Html->safe(
-                            $service->name ?? ''
-                        ); ?></div>
-                    </div>
+    </section>
+
+    <div class="d-flex justify-content-end">
+        <button type="submit" name="review" value="1" class="btn btn-success">
+            <?php $this->_('ServiceExtrasPlugin.purchase.review_button'); ?>
+        </button>
+    </div>
+    <?php } else { ?>
+    <div class="d-none" aria-hidden="true" id="service_extra_config_options">
+        <?php echo $module_html; ?>
+        <?php echo $options_html; ?>
+    </div>
+
+    <section class="service-extra-review mb-4">
+        <h5 class="mb-3"><?php $this->_('ServiceExtrasPlugin.purchase.review_heading'); ?></h5>
+        <div class="row">
+            <div class="col-lg-8">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.product'); ?></dt>
+                    <dd class="col-sm-8"><strong><?php echo $this->Html->safe(
+                        $selected['package']->name ?? ''
+                    ); ?></strong></dd>
+                    <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.target_service'); ?></dt>
+                    <dd class="col-sm-8"><strong><?php echo $this->Html->safe(
+                        $service->name ?? ''
+                    ); ?></strong></dd>
                     <?php foreach ($preview as $key => $value) { ?>
                         <?php if (is_scalar($value)
                             && !in_array($key, ['notice', '_service_extra', 'product'], true)
                             && !($key === 'valid_until' && !empty($scheduled_cancellation))) { ?>
-                    <div class="service-extra-review-row row no-gutters">
-                        <div class="col-sm-4 text-muted small"><?php echo $this->Html->safe(
-                            ucwords(str_replace('_', ' ', $key))
-                        ); ?></div>
-                        <div class="col-sm-8 font-weight-bold"><?php echo $this->Html->safe($value); ?></div>
-                    </div>
+                    <dt class="col-sm-4"><?php echo $this->Html->safe(
+                        ucwords(str_replace('_', ' ', $key))
+                    ); ?></dt>
+                    <dd class="col-sm-8"><strong><?php echo $this->Html->safe($value); ?></strong></dd>
                         <?php } ?>
                     <?php } ?>
-                    <?php if (!empty($preview['notice'])) { ?>
-                    <div class="alert alert-info mt-3 mb-0">
-                        <?php echo $this->Html->safe($preview['notice']); ?>
-                    </div>
-                    <?php } ?>
+                </dl>
+                <?php if (!empty($preview['notice'])) { ?>
+                <div class="alert alert-info mt-3">
+                    <?php echo $this->Html->safe($preview['notice']); ?>
                 </div>
-                <div class="col-lg-5 mt-4 mt-lg-0">
-                    <div class="service-extra-summary-panel p-3 p-md-4">
-                        <?php if (!empty($scheduled_cancellation)) { ?>
-                        <span class="service-extra-meta-label"><?php $this->_(
-                            'ServiceExtrasPlugin.purchase.service_ends'
-                        ); ?></span>
-                        <div class="font-weight-bold mb-3"><?php echo $this->Html->safe(
-                            $this->Date->cast($scheduled_cancellation, 'Y-m-d')
-                        ); ?></div>
-                        <?php } ?>
-                        <?php if (!empty($pricing_totals)) { ?>
-                        <span class="service-extra-meta-label"><?php $this->_(
-                            'ServiceExtrasPlugin.purchase.due_now'
-                        ); ?></span>
-                        <div class="service-extra-total"><?php echo $this->CurrencyFormat->format(
-                            $pricing_totals->total_without_exclusive_tax,
-                            $selected['pricing']->currency
-                        ); ?></div>
-                        <?php } ?>
-                        <hr>
-                        <p class="text-muted small mb-0"><?php $this->_(
-                            'ServiceExtrasPlugin.purchase.payment_window',
-                            false,
-                            (int) $unpaid_order_ttl_hours
-                        ); ?></p>
-                    </div>
-                </div>
+                <?php } ?>
+            </div>
+            <div class="col-lg-4 service-extra-review-total pl-lg-4 mt-3 mt-lg-0">
+                <?php if (!empty($scheduled_cancellation)) { ?>
+                <div class="text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.service_ends'); ?></div>
+                <div class="font-weight-bold mb-3"><strong><?php echo $this->Html->safe(
+                    $this->Date->cast($scheduled_cancellation, 'Y-m-d')
+                ); ?></strong></div>
+                <?php } ?>
+                <?php if (!empty($pricing_totals)) { ?>
+                <div class="text-muted small"><?php $this->_('ServiceExtrasPlugin.purchase.due_now'); ?></div>
+                <h4><?php echo $this->CurrencyFormat->format(
+                    $pricing_totals->total_without_exclusive_tax,
+                    $selected['pricing']->currency
+                ); ?></h4>
+                <?php } ?>
+                <p class="text-muted small mb-0"><?php $this->_(
+                    'ServiceExtrasPlugin.purchase.payment_window',
+                    false,
+                    (int) $unpaid_order_ttl_hours
+                ); ?></p>
             </div>
         </div>
     </section>
-    <div class="alert alert-secondary d-none" id="service_extra_review_required">
-        <?php $this->_('ServiceExtrasPlugin.purchase.review_required'); ?>
-    </div>
-    <?php } ?>
 
-    <div class="d-flex flex-wrap justify-content-end">
-        <button type="submit" name="review" value="1" class="btn <?php echo is_array($preview)
-            ? 'btn-light'
-            : 'btn-success'; ?> mb-2 ml-2">
-            <?php $this->_(is_array($preview)
-                ? 'ServiceExtrasPlugin.purchase.review_again'
-                : 'ServiceExtrasPlugin.purchase.review_button'); ?>
+    <div class="d-flex justify-content-between align-items-center">
+        <button type="submit" name="back" value="1" class="btn btn-outline-secondary">
+            <?php $this->_('ServiceExtrasPlugin.purchase.back'); ?>
         </button>
-        <?php if (is_array($preview) && $scheduled_cancellation !== false) { ?>
+        <?php if ($scheduled_cancellation !== false) { ?>
         <button
             type="submit"
             name="purchase"
             value="1"
             id="service_extra_purchase"
-            class="btn btn-success mb-2 ml-2"
+            class="btn btn-success"
         >
             <?php $this->_('ServiceExtrasPlugin.purchase.continue_payment'); ?>
         </button>
         <?php } ?>
     </div>
-    <?php $this->Form->end(); ?>
+    <?php } ?>
 
+    <?php $this->Form->end(); ?>
     <?php echo $option_logic_js ?? null; ?>
 
     <script type="text/javascript">
@@ -452,29 +276,12 @@ $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
                 });
 
             var purchase = document.getElementById('service_extra_purchase');
-            var form = purchase ? purchase.form : null;
-            var reviewRequired = document.getElementById('service_extra_review_required');
-            if (!form) {
+            if (!purchase || !purchase.form) {
                 return;
             }
-
-            document.querySelectorAll(
-                '#service_extra_config_options input, '
-                + '#service_extra_config_options select, '
-                + '#service_extra_config_options textarea'
-            ).forEach(function (field) {
-                field.addEventListener('change', function () {
-                    purchase.disabled = true;
-                    if (reviewRequired) {
-                        reviewRequired.classList.remove('d-none');
-                    }
-                });
-            });
-
-            form.addEventListener('submit', function (event) {
+            purchase.form.addEventListener('submit', function (event) {
                 if (event.submitter && event.submitter.name === 'purchase') {
-                    purchase.style.pointerEvents = 'none';
-                    purchase.setAttribute('aria-disabled', 'true');
+                    purchase.disabled = true;
                     purchase.textContent = <?php echo json_encode(
                         $this->_('ServiceExtrasPlugin.purchase.opening_payment', true)
                     ); ?>;

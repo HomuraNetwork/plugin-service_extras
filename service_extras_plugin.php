@@ -747,27 +747,46 @@ class ServiceExtrasPlugin extends Plugin
         return ['service_id' => $service_id, 'invoice_id' => $invoice_id];
     }
 
-    private function optionLogic($package, $pricing)
+    private function serviceExtraOptionIds($package, $pricing)
+    {
+        $option_ids = [];
+        $options = $this->PackageOptions->getAllByPackageId(
+            $package->id,
+            $pricing->term,
+            $pricing->period,
+            $pricing->currency
+        );
+        foreach ($options as $option) {
+            if (($option->hidden ?? '0') != '1') {
+                $option_ids[] = (int) $option->id;
+            }
+        }
+
+        return $option_ids;
+    }
+
+    private function optionLogic($package, $pricing, ?array $option_ids = null)
     {
         Loader::loadModels($this, ['PackageOptionConditionSets']);
+        $option_ids = $option_ids ?? $this->serviceExtraOptionIds($package, $pricing);
         $options = $this->PackageOptions->getAllByPackageId(
             $package->id,
             $pricing->term,
             $pricing->period,
             $pricing->currency,
             null,
-            ['addable' => 1]
+            ['allow' => $option_ids]
         );
-        $option_ids = [];
+        $condition_option_ids = [];
         foreach ($options as $option) {
-            $option_ids[] = $option->id;
+            $condition_option_ids[] = $option->id;
         }
 
         $condition_sets = [];
-        if (!empty($option_ids)) {
+        if (!empty($condition_option_ids)) {
             $condition_sets = $this->PackageOptionConditionSets->getAll([
                 'package_id' => $package->id,
-                'option_ids' => $option_ids
+                'option_ids' => $condition_option_ids
             ]);
         }
 
@@ -846,6 +865,16 @@ class ServiceExtrasPlugin extends Plugin
         $selected['definition'] = [];
         $selected['use_parent_module_row'] = false;
 
+        $service_extra_option_ids = $this->serviceExtraOptionIds(
+            $selected['package'],
+            $selected['pricing']
+        );
+        if (isset($post['configoptions']) && is_array($post['configoptions'])) {
+            $post['configoptions'] = array_intersect_key(
+                $post['configoptions'],
+                array_fill_keys($service_extra_option_ids, true)
+            );
+        }
         $vars = (object) $post;
         $package_options = $this->PackageOptions->getFields(
             $selected['package']->id,
@@ -854,10 +883,17 @@ class ServiceExtrasPlugin extends Plugin
             $selected['pricing']->currency,
             $vars,
             null,
-            ['new' => empty($post['configoptions']) ? 1 : 0, 'addable' => 1]
+            [
+                'new' => empty($post['configoptions']) ? 1 : 0,
+                'allow' => $service_extra_option_ids
+            ]
         );
         $package_fields_html = new FieldsHtml($package_options);
-        $option_logic = $this->optionLogic($selected['package'], $selected['pricing']);
+        $option_logic = $this->optionLogic(
+            $selected['package'],
+            $selected['pricing'],
+            $service_extra_option_ids
+        );
         $option_logic->setOptionContainerSelector(
             '#service_extra_config_options ' . $package_fields_html->getContainerSelector()
         );

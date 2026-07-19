@@ -189,7 +189,7 @@ assertSameValue(
 );
 assertSameValue(
     true,
-    strpos($source, 'if (!empty($option_ids))') !== false
+    strpos($source, 'if (!empty($condition_option_ids))') !== false
         && strpos($source, '$logic->setPackageOptionConditionSets($condition_sets);') !== false,
     'Packages without Configurable Options must not query condition sets with an empty SQL IN clause.'
 );
@@ -202,7 +202,7 @@ assertSameValue(
 );
 assertSameValue(
     true,
-    strpos($tab_view_source, 'service-extra-product-card') !== false
+    strpos($tab_view_source, 'service-extra-product') !== false
         && strpos($tab_view_source, '<select') === false
         && strpos($tab_view_source, 'name="select_product_id"') !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.step_select') !== false
@@ -226,10 +226,28 @@ assertSameValue(
 );
 assertSameValue(
     true,
-    substr_count($tab_view_source, 'card card-blesta') >= 3
-        && strpos($tab_view_source, 'service-extra-summary-panel') !== false
-        && strpos($tab_view_source, 'service-extra-config-fields') !== false,
-    'The purchase flow must use Blesta Order-style Bootstrap cards for selection, configuration, and review.'
+    strpos($tab_view_source, "if (!is_array(\$preview))") !== false
+        && strpos($tab_view_source, 'name="back"') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.back') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.review_again') === false,
+    'Selection and configuration must be separate from review, with a Back action on the review page.'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, 'nav nav-pills nav-fill') !== false
+        && strpos($tab_view_source, 'btn-outline-secondary') !== false
+        && strpos($tab_view_source, 'bg-white') === false
+        && strpos($tab_view_source, 'linear-gradient') === false,
+    'The checkout must use a simple Bootstrap layout without hard-coded white cards or decorative gradients.'
+);
+assertSameValue(
+    true,
+    strpos($source, 'private function serviceExtraOptionIds(') !== false
+        && strpos($source, "(\$option->hidden ?? '0') != '1'") !== false
+        && strpos($source, "'allow' => \$service_extra_option_ids") !== false
+        && strpos($source, 'array_fill_keys($service_extra_option_ids, true)') !== false
+        && strpos($source, "['addable' => 1]") === false,
+    'Rule-offered Extra products must display all attached non-hidden Configurable Options with matching pricing.'
 );
 assertSameValue(
     true,
