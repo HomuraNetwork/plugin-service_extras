@@ -747,19 +747,18 @@ class ServiceExtrasPlugin extends Plugin
         return ['service_id' => $service_id, 'invoice_id' => $invoice_id];
     }
 
-    private function serviceExtraOptionIds($package, $pricing)
+    private function serviceExtraOptionIds($package, $pricing, $convert_currency = null)
     {
         $option_ids = [];
         $options = $this->PackageOptions->getAllByPackageId(
-            $package->id,
+            $pricing->package_id ?? $package->id,
             $pricing->term,
             $pricing->period,
-            $pricing->currency
+            $pricing->currency,
+            $convert_currency
         );
         foreach ($options as $option) {
-            if (($option->hidden ?? '0') != '1') {
-                $option_ids[] = (int) $option->id;
-            }
+            $option_ids[] = (int) $option->id;
         }
 
         return $option_ids;
@@ -867,7 +866,8 @@ class ServiceExtrasPlugin extends Plugin
 
         $service_extra_option_ids = $this->serviceExtraOptionIds(
             $selected['package'],
-            $selected['pricing']
+            $selected['pricing'],
+            $currency
         );
         if (isset($post['configoptions']) && is_array($post['configoptions'])) {
             $post['configoptions'] = array_intersect_key(
@@ -877,12 +877,12 @@ class ServiceExtrasPlugin extends Plugin
         }
         $vars = (object) $post;
         $package_options = $this->PackageOptions->getFields(
-            $selected['package']->id,
+            $selected['pricing']->package_id ?? $selected['package']->id,
             $selected['pricing']->term,
             $selected['pricing']->period,
             $selected['pricing']->currency,
             $vars,
-            null,
+            $currency,
             [
                 'new' => empty($post['configoptions']) ? 1 : 0,
                 'allow' => $service_extra_option_ids

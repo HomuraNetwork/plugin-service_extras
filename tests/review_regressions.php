@@ -243,11 +243,18 @@ assertSameValue(
 assertSameValue(
     true,
     strpos($source, 'private function serviceExtraOptionIds(') !== false
-        && strpos($source, "(\$option->hidden ?? '0') != '1'") !== false
+        && strpos($source, '$pricing->package_id ?? $package->id') !== false
+        && strpos($source, '$option->hidden') === false
         && strpos($source, "'allow' => \$service_extra_option_ids") !== false
         && strpos($source, 'array_fill_keys($service_extra_option_ids, true)') !== false
         && strpos($source, "['addable' => 1]") === false,
-    'Rule-offered Extra products must display all attached non-hidden Configurable Options with matching pricing.'
+    'Rule-offered Extra products must display all attached Configurable Options with matching pricing.'
+);
+assertSameValue(
+    true,
+    substr_count($tab_view_source, '->generate()') === 2
+        && strpos($tab_view_source, '->generate(null, $this->view)') === false,
+    'Configurable Options must use the same FieldsHtml rendering path as the Order plugin.'
 );
 assertSameValue(
     true,

@@ -2,8 +2,8 @@
 <?php
 $checkout_step = !empty($created) ? 3 : (is_array($preview) ? 2 : 1);
 $status_label = ucwords(str_replace('_', ' ', (string) ($service->status ?? '')));
-$module_html = isset($module_fields_html) ? $module_fields_html->generate(null, $this->view) : '';
-$options_html = isset($package_fields_html) ? $package_fields_html->generate(null, $this->view) : '';
+$module_html = isset($module_fields_html) ? $module_fields_html->generate() : '';
+$options_html = isset($package_fields_html) ? $package_fields_html->generate() : '';
 $has_configuration = trim(strip_tags($module_html . $options_html)) !== '';
 ?>
 
