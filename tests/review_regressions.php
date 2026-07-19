@@ -64,6 +64,21 @@ $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rule
 $form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
 $admin_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/admin_main.php');
 $tab_view_source = file_get_contents(dirname(__DIR__) . '/views/default/tab_service_extra.pdt');
+$offerings_source = substr(
+    $source,
+    strpos($source, 'private function offerings'),
+    strpos($source, 'private function normalizeServiceExtraExpiry')
+        - strpos($source, 'private function offerings')
+);
+$preview_condition_position = strpos(
+    $source,
+    "if (!empty(\$post['preview']) || !empty(\$post['purchase']))"
+);
+$availability_call_position = strpos(
+    $source,
+    '$availability = $this->serviceExtraAvailability(',
+    $preview_condition_position
+);
 assertSameValue(
     true,
     strpos($source, "'parent_service_id' => \$parent_service->id") !== false,
@@ -131,6 +146,16 @@ assertSameValue(
     false,
     strpos($source, 'ruleHasAvailableProduct') !== false,
     'A matching service tab must remain visible when its product configuration is incomplete.'
+);
+assertSameValue(
+    true,
+    strpos($offerings_source, 'serviceExtraDefinition') === false
+        && strpos($offerings_source, 'getServiceExtraAvailability') === false
+        && strpos($source, "'getServiceExtraAvailability'") !== false
+        && $preview_condition_position !== false
+        && $availability_call_position !== false
+        && $preview_condition_position < $availability_call_position,
+    'Rule-selected products must be listed before preview-time module availability validation runs.'
 );
 assertSameValue(
     true,

@@ -225,29 +225,63 @@ class ServiceExtrasPlugin extends Plugin
         ];
     }
 
-    private function serviceExtraDefinition($parent_package, $parent_service, $extra_package)
+    private function serviceExtraAvailability(
+        $parent_package,
+        $parent_service,
+        $extra_package,
+        array $config_options = []
+    )
     {
         $module_id = (int) ($extra_package->module_id ?? 0);
         if ($module_id < 1) {
-            return null;
+            return ['available' => true, 'definition' => [], 'review' => []];
         }
 
         $module = $this->ModuleManager->initModule($module_id);
-        if (!$module || !is_callable([$module, 'getServiceExtraDefinition'])) {
-            return null;
+        if (!$module) {
+            return ['available' => false, 'definition' => [], 'review' => []];
         }
 
         $module_row_id = (int) ($parent_package->module_id ?? 0) === $module_id
             ? (int) ($parent_service->module_row_id ?? 0)
             : null;
-        $definition = $this->ModuleManager->moduleRpc(
-            $module_id,
-            'getServiceExtraDefinition',
-            [$parent_package, $parent_service, $extra_package],
-            $module_row_id
-        );
 
-        return is_array($definition) ? $definition : null;
+        if (is_callable([$module, 'getServiceExtraAvailability'])) {
+            $availability = $this->ModuleManager->moduleRpc(
+                $module_id,
+                'getServiceExtraAvailability',
+                [$parent_package, $parent_service, $extra_package, $config_options],
+                $module_row_id
+            );
+            if (is_array($availability) && array_key_exists('available', $availability)) {
+                return [
+                    'available' => !empty($availability['available']),
+                    'definition' => is_array($availability['definition'] ?? null)
+                        ? $availability['definition']
+                        : [],
+                    'review' => is_array($availability['review'] ?? null)
+                        ? $availability['review']
+                        : []
+                ];
+            }
+            return ['available' => false, 'definition' => [], 'review' => []];
+        }
+
+        if (is_callable([$module, 'getServiceExtraDefinition'])) {
+            $definition = $this->ModuleManager->moduleRpc(
+                $module_id,
+                'getServiceExtraDefinition',
+                [$parent_package, $parent_service, $extra_package],
+                $module_row_id
+            );
+            return [
+                'available' => !empty($definition),
+                'definition' => is_array($definition) ? $definition : [],
+                'review' => []
+            ];
+        }
+
+        return ['available' => true, 'definition' => [], 'review' => []];
     }
 
     private function serviceTabs(stdClass $service)
@@ -282,7 +316,7 @@ class ServiceExtrasPlugin extends Plugin
         return $this->serviceTabs($service);
     }
 
-    private function offerings(stdClass $rule, $currency, $parent_package, $parent_service)
+    private function offerings(stdClass $rule, $currency)
     {
         $offerings = [];
         $selected_ids = array_fill_keys(array_map('intval', $rule->product_package_ids), true);
@@ -297,21 +331,8 @@ class ServiceExtrasPlugin extends Plugin
                 continue;
             }
 
-            $definition = $this->serviceExtraDefinition($parent_package, $parent_service, $package);
-            if (!$definition) {
-                continue;
-            }
-            if (!empty($definition['requires_parent_module_row'])
-                && (int) $package->module_id !== (int) ($parent_package->module_id ?? 0)) {
-                continue;
-            }
-
             foreach (($package->pricing ?? []) as $pricing) {
                 if (($pricing->currency ?? null) !== $currency) {
-                    continue;
-                }
-                if (!empty($definition['allowed_periods'])
-                    && !in_array($pricing->period, (array) $definition['allowed_periods'], true)) {
                     continue;
                 }
 
@@ -319,8 +340,7 @@ class ServiceExtrasPlugin extends Plugin
                     'rule' => $rule,
                     'package' => $package,
                     'pricing' => $pricing,
-                    'package_group_id' => (int) $rule->product_group_id,
-                    'definition' => $definition
+                    'package_group_id' => (int) $rule->product_group_id
                 ];
             }
         }
@@ -417,7 +437,8 @@ class ServiceExtrasPlugin extends Plugin
         }
 
         $parent_package = $this->Packages->get(($parent_service->package ?? null)->id ?? null);
-        $requires_parent_row = !empty($offering['definition']['requires_parent_module_row']);
+        $requires_parent_row = !empty($offering['definition']['requires_parent_module_row'])
+            || !empty($offering['use_parent_module_row']);
         if ($requires_parent_row
             && (!$parent_package || (int) $parent_package->module_id !== (int) $package->module_id)) {
             $this->Input->setErrors([
@@ -525,13 +546,13 @@ class ServiceExtrasPlugin extends Plugin
         $currency = $currency_setting->value ?? null;
         $offerings = $this->offerings(
             $rule,
-            $currency,
-            $context['package'],
-            $service
+            $currency
         );
         if (empty($offerings)) {
             $this->Input->setErrors([
-                'service_extra' => ['unavailable' => Language::_('ServiceExtrasPlugin.!error.unavailable', true)]
+                'service_extra' => [
+                    'unavailable' => Language::_('ServiceExtrasPlugin.!error.unavailable', true, $currency)
+                ]
             ]);
             return '';
         }
@@ -546,6 +567,11 @@ class ServiceExtrasPlugin extends Plugin
             $selected_id = (int) array_key_first($offerings);
             $selected = $offerings[$selected_id];
         }
+
+        $same_module = (int) ($selected['package']->module_id ?? 0)
+            === (int) ($context['package']->module_id ?? 0);
+        $selected['definition'] = [];
+        $selected['use_parent_module_row'] = false;
 
         $vars = (object) $post;
         $package_options = $this->PackageOptions->getFields(
@@ -565,7 +591,7 @@ class ServiceExtrasPlugin extends Plugin
         $module_fields_html = null;
         if ($extra_module) {
             $extra_module->base_uri = $this->base_uri;
-            if (!empty($selected['definition']['requires_parent_module_row'])) {
+            if ($same_module) {
                 $extra_module->setModuleRow($extra_module->getModuleRow($service->module_row_id));
             }
             $module_fields = $extra_module->getClientAddFields($selected['package'], $vars);
@@ -578,32 +604,75 @@ class ServiceExtrasPlugin extends Plugin
         $scheduled_cancellation = null;
         if (!empty($post['preview']) || !empty($post['purchase'])) {
             $formatted_options = $this->PackageOptions->formatOptions($post['configoptions'] ?? []);
-            $preview = $this->ModuleManager->moduleRpc(
-                $selected['package']->module_id,
-                'previewServiceExtra',
-                [
-                    $context['package'],
-                    $service,
-                    $selected['package'],
-                    $formatted_options
-                ],
-                !empty($selected['definition']['requires_parent_module_row'])
-                    ? $service->module_row_id
-                    : null
+            $availability = $this->serviceExtraAvailability(
+                $context['package'],
+                $service,
+                $selected['package'],
+                $formatted_options
             );
+            if (($errors = $this->ModuleManager->errors())) {
+                $this->Input->setErrors($errors);
+            } elseif (empty($availability['available'])) {
+                $this->Input->setErrors([
+                    'service_extra' => [
+                        'availability' => Language::_('ServiceExtrasPlugin.!error.availability', true)
+                    ]
+                ]);
+            } else {
+                $selected['definition'] = $availability['definition'];
+                $requires_parent_module_row = !empty(
+                    $selected['definition']['requires_parent_module_row']
+                );
+                $use_parent_module_row = $same_module && $requires_parent_module_row;
+                $selected['use_parent_module_row'] = $use_parent_module_row;
+                $allowed_periods = (array) ($selected['definition']['allowed_periods'] ?? []);
+
+                if ($requires_parent_module_row && !$same_module) {
+                    $this->Input->setErrors([
+                        'service_extra' => [
+                            'module_row' => Language::_('ServiceExtrasPlugin.!error.module_row', true)
+                        ]
+                    ]);
+                } elseif (!empty($allowed_periods)
+                    && !in_array($selected['pricing']->period, $allowed_periods, true)) {
+                    $this->Input->setErrors([
+                        'service_extra' => [
+                            'period' => Language::_('ServiceExtrasPlugin.!error.period', true)
+                        ]
+                    ]);
+                } else {
+                    $preview = $availability['review'];
+                    if ($extra_module && is_callable([$extra_module, 'previewServiceExtra'])) {
+                        $preview = $this->ModuleManager->moduleRpc(
+                            $selected['package']->module_id,
+                            'previewServiceExtra',
+                            [
+                                $context['package'],
+                                $service,
+                                $selected['package'],
+                                $formatted_options
+                            ],
+                            $use_parent_module_row ? $service->module_row_id : null
+                        );
+                    } elseif (empty($preview)) {
+                        $preview = [
+                            'product' => (string) ($selected['package']->name ?? '')
+                        ];
+                    }
+                }
+            }
 
             if (($errors = $this->ModuleManager->errors())) {
                 $this->Input->setErrors($errors);
-            } elseif (!is_array($preview)) {
-                $this->Input->setErrors([
-                    'service_extra' => ['preview' => Language::_('ServiceExtrasPlugin.!error.preview', true)]
-                ]);
-            } else {
+                $preview = null;
+            }
+            if (is_array($preview)) {
                 $scheduled_cancellation = $this->serviceExtraExpiry($preview);
                 if ($scheduled_cancellation === false) {
                     $this->Input->setErrors([
                         'service_extra' => ['expiry' => Language::_('ServiceExtrasPlugin.!error.expiry', true)]
                     ]);
+                    $preview = null;
                 } elseif (!empty($post['purchase'])) {
                     $created = $this->createServiceExtra(
                         $service,

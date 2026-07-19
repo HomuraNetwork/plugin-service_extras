@@ -53,7 +53,7 @@ The package selectors use separate Eligible/Offered and Available lists. Click a
 
 Each rule creates its own service tab. Multiple rules may match the same parent service and appear as separate pages with different names and products.
 
-The service tab remains visible when a matching rule has no currently compatible product. Opening it then displays an availability error so staff can identify product, pricing, or module configuration problems without the entire page disappearing.
+The service tab lists the active products explicitly selected by the rule when they have pricing in the client's currency. Selecting a product does not run module validation. When the customer requests the preview, a supporting module may check availability and return product-specific review information. Only a successful preview enables invoice and service creation.
 
 ## Customer purchase flow
 
