@@ -534,6 +534,7 @@ class ServiceExtrasPlugin extends Plugin
             'Pricings',
             'Services'
         ]);
+        $this->view = new View();
         Loader::loadHelpers($this, ['CurrencyFormat', 'Date', 'Form', 'Html']);
 
         $context = $this->context($service, $rule_id);
@@ -710,7 +711,6 @@ class ServiceExtrasPlugin extends Plugin
             }
         }
 
-        $this->view = new View();
         $this->view->setView('tab_service_extra', 'ServiceExtras.default');
         $this->view->base_uri = $this->base_uri;
         $this->view->set('service', $service);

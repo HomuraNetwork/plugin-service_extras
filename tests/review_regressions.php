@@ -79,6 +79,13 @@ $availability_call_position = strpos(
     '$availability = $this->serviceExtraAvailability(',
     $preview_condition_position
 );
+$tab_method_position = strpos($source, 'private function tabServiceExtra(');
+$tab_view_position = strpos($source, '$this->view = new View();', $tab_method_position);
+$tab_helpers_position = strpos(
+    $source,
+    "Loader::loadHelpers(\$this, ['CurrencyFormat', 'Date', 'Form', 'Html']);",
+    $tab_method_position
+);
 assertSameValue(
     true,
     strpos($source, "'parent_service_id' => \$parent_service->id") !== false,
@@ -170,6 +177,13 @@ assertSameValue(
     strpos($source, 'if (!empty($option_ids))') !== false
         && strpos($source, '$logic->setPackageOptionConditionSets($condition_sets);') !== false,
     'Packages without Configurable Options must not query condition sets with an empty SQL IN clause.'
+);
+assertSameValue(
+    true,
+    $tab_view_position !== false
+        && $tab_helpers_position !== false
+        && $tab_view_position < $tab_helpers_position,
+    'Service tab helpers must be attached after the plugin creates its custom View instance.'
 );
 
 echo "review regressions: ok\n";
