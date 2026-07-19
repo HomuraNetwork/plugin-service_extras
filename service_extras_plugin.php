@@ -507,12 +507,16 @@ class ServiceExtrasPlugin extends Plugin
             $option_ids[] = $option->id;
         }
 
+        $condition_sets = [];
+        if (!empty($option_ids)) {
+            $condition_sets = $this->PackageOptionConditionSets->getAll([
+                'package_id' => $package->id,
+                'option_ids' => $option_ids
+            ]);
+        }
+
         $logic = new OptionLogic();
-        $logic->setPackageOptionConditionSets(
-            $this->PackageOptionConditionSets->getAll(
-                ['package_id' => $package->id, 'option_ids' => $option_ids]
-            )
-        );
+        $logic->setPackageOptionConditionSets($condition_sets);
         return $logic;
     }
 

@@ -165,5 +165,11 @@ assertSameValue(
         && strpos($tab_view_source, "'pay/method/'") === false,
     'Invoice links must use the correct staff or client route for the current service page.'
 );
+assertSameValue(
+    true,
+    strpos($source, 'if (!empty($option_ids))') !== false
+        && strpos($source, '$logic->setPackageOptionConditionSets($condition_sets);') !== false,
+    'Packages without Configurable Options must not query condition sets with an empty SQL IN clause.'
+);
 
 echo "review regressions: ok\n";
