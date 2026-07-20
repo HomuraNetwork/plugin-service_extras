@@ -62,7 +62,9 @@ assertSameValue(
 $source = file_get_contents(dirname(__DIR__) . '/service_extras_plugin.php');
 $rules_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_rules.php');
 $orders_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_orders.php');
+$settings_source = file_get_contents(dirname(__DIR__) . '/models/service_extra_settings.php');
 $form_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main_form.pdt');
+$admin_view_source = file_get_contents(dirname(__DIR__) . '/views/default/admin_main.pdt');
 $admin_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/admin_main.php');
 $client_controller_source = file_get_contents(dirname(__DIR__) . '/controllers/client_main.php');
 $base_controller_source = file_get_contents(dirname(__DIR__) . '/service_extras_controller.php');
@@ -307,6 +309,11 @@ assertSameValue(
 );
 assertSameValue(
     true,
+    strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_destination') !== false,
+    'The review step must explain the expected activation time after payment.'
+);
+assertSameValue(
+    true,
     strpos($tab_view_source, '$parent_package->name') !== false
         && strpos($tab_view_source, '$service->name') !== false
         && strpos($tab_view_source, '$service->date_renews') !== false,
@@ -322,8 +329,16 @@ assertSameValue(
 assertSameValue(
     true,
     strpos($orders_source, "max(1, (int) \$hours) * 3600") !== false
-        && strpos($source, 'private const UNPAID_ORDER_TTL_HOURS = 12;') !== false,
-    'Tracked unpaid purchases must become eligible for cleanup after 12 hours.'
+        && strpos($settings_source, 'DEFAULT_UNPAID_ORDER_TTL_HOURS = 12;') !== false
+        && substr_count($source, 'getUnpaidOrderTtlHours(') >= 2,
+    'The configured unpaid purchase expiry must drive both cleanup and checkout messaging.'
+);
+assertSameValue(
+    true,
+    strpos($admin_controller_source, 'setUnpaidOrderTtlHours(') !== false
+        && strpos($admin_view_source, "fieldNumber(\n            'unpaid_order_ttl_hours'") !== false
+        && strpos($settings_source, 'MAXIMUM_UNPAID_ORDER_TTL_HOURS = 720;') !== false,
+    'Staff must be able to configure the unpaid purchase expiry in whole hours.'
 );
 $expiry_method_position = strpos($source, 'private function expireUnpaidOrders(');
 $void_position = strpos($source, "['status' => 'void']", $expiry_method_position);

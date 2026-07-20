@@ -21,6 +21,8 @@ Upload the plugin to:
 
 Install and enable **Service Extras** under Blesta plugin settings. Rules are managed under **Packages > Service Extras**.
 
+The **Unpaid purchase expiry** setting on that page controls how many hours a generated invoice may remain unpaid before its pending child service is removed. The default is 12 hours.
+
 When updating an existing installation, replace the plugin files and run **Upgrade** for Service Extras in Blesta. The upgrade installs the purchase-tracking table and the five-minute unpaid-purchase cleanup task.
 
 ## Prepare a product group
@@ -70,11 +72,12 @@ When the customer continues to payment:
 2. Blesta creates an invoice using the selected package pricing and Configurable Options.
 3. The browser opens the payment page immediately.
 4. Payment activates the pending service and calls its module for provisioning.
-5. Recurring products continue through Blesta's normal renewal process. One-time products do not renew.
+5. Provisioning normally completes within a few minutes after Blesta confirms payment.
+6. Recurring products continue through Blesta's normal renewal process. One-time products do not renew.
 
 The public invoice note identifies the parent package and service. Product names and Configurable Option labels should still be written clearly because they are also used in billing and service records.
 
-Payment must be completed within 12 hours. Every purchase created by this plugin is tracked separately. The cleanup task preserves paid or already-activated services; for an unpaid pending purchase it voids the invoice and removes the pending child service using Blesta's normal abandoned-order behavior.
+Payment must be completed within the configured unpaid purchase expiry window. Every purchase created by this plugin is tracked separately. The cleanup task preserves paid or already-activated services; for an unpaid pending purchase it voids the invoice and removes the pending child service using Blesta's normal abandoned-order behavior.
 
 ## Scheduled service end
 

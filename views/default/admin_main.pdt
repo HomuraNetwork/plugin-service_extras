@@ -11,6 +11,31 @@ $this->Widget->setLinkButtons([[
 $this->Widget->setBodyWrapper(false);
 $this->Widget->create($this->_('AdminMain.index.title', true));
 ?>
+<?php $this->Form->create(null, ['class' => 'p-3 border-bottom']); ?>
+<div class="row align-items-end g-3">
+    <div class="col-sm-7 col-md-5 col-lg-4">
+        <label class="form-label" for="unpaid_order_ttl_hours">
+            <?php $this->_('AdminMain.index.unpaid_order_ttl_hours'); ?>
+        </label>
+        <?php $this->Form->fieldNumber(
+            'unpaid_order_ttl_hours',
+            $unpaid_order_ttl_hours ?? 12,
+            1,
+            $maximum_unpaid_order_ttl_hours ?? 720,
+            1,
+            ['id' => 'unpaid_order_ttl_hours', 'class' => 'form-control']
+        ); ?>
+        <div class="form-text"><?php $this->_('AdminMain.index.unpaid_order_ttl_hours_help'); ?></div>
+    </div>
+    <div class="col-sm-auto">
+        <?php $this->Form->fieldSubmit(
+            'save_settings',
+            $this->_('AdminMain.index.save_settings', true),
+            ['class' => 'btn btn-primary']
+        ); ?>
+    </div>
+</div>
+<?php $this->Form->end(); ?>
 <div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
         <thead><tr>

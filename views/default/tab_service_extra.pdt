@@ -236,6 +236,9 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                     $selected['pricing']->currency
                 ); ?></h4>
                 <?php } ?>
+                <p class="small mb-2"><?php $this->_(
+                    'ServiceExtrasPlugin.purchase.payment_destination'
+                ); ?></p>
                 <p class="text-muted small mb-0"><?php $this->_(
                     'ServiceExtrasPlugin.purchase.payment_window',
                     false,

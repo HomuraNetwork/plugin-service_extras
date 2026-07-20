@@ -5,8 +5,6 @@ use Blesta\Core\Util\PackageOptions\Logic as OptionLogic;
 
 class ServiceExtrasPlugin extends Plugin
 {
-    private const UNPAID_ORDER_TTL_HOURS = 12;
-
     public function __construct()
     {
         Language::loadLang('service_extras_plugin', null, dirname(__FILE__) . DS . 'language' . DS);
@@ -20,6 +18,11 @@ class ServiceExtrasPlugin extends Plugin
             $this->createRuleTable();
             $this->createOrderTable();
             $this->addCronTasks($this->getCronTasks());
+            Loader::loadModels($this, ['PluginManager', 'ServiceExtras.ServiceExtraSettings']);
+            $plugin = $this->PluginManager->get($plugin_id);
+            $this->ServiceExtraSettings->installDefaults(
+                $plugin->company_id ?? Configure::get('Blesta.company_id')
+            );
         } catch (\Throwable $e) {
             $this->Input->setErrors(['db' => ['create' => $e->getMessage()]]);
         }
@@ -91,11 +94,15 @@ class ServiceExtrasPlugin extends Plugin
                 $this->addCronTasks($this->getCronTasks());
             }
 
-            Loader::loadModels($this, ['ServiceExtras.ServiceExtraRules']);
+            Loader::loadModels($this, [
+                'ServiceExtras.ServiceExtraRules',
+                'ServiceExtras.ServiceExtraSettings'
+            ]);
             $plugin_instances = $this->Record->select(['id', 'company_id'])->from('plugins')
                 ->where('dir', '=', 'service_extras')
                 ->fetchAll();
             foreach ($plugin_instances as $instance) {
+                $this->ServiceExtraSettings->installDefaults($instance->company_id);
                 $this->ServiceExtraRules->syncPluginParentAssociations(
                     $instance->id,
                     $instance->company_id
@@ -212,8 +219,10 @@ class ServiceExtrasPlugin extends Plugin
 
     public function uninstall($plugin_id, $last_instance)
     {
-        Loader::loadModels($this, ['CronTasks']);
+        Loader::loadModels($this, ['CronTasks', 'ServiceExtras.ServiceExtraSettings']);
         $company_id = (int) Configure::get('Blesta.company_id');
+
+        $this->ServiceExtraSettings->uninstall($company_id);
 
         if ($this->tableExists('service_extra_orders')) {
             $this->Record->from('service_extra_orders')->where('company_id', '=', $company_id)->delete();
@@ -314,12 +323,13 @@ class ServiceExtrasPlugin extends Plugin
         Loader::loadModels($this, [
             'Invoices',
             'Services',
-            'ServiceExtras.ServiceExtraOrders'
+            'ServiceExtras.ServiceExtraOrders',
+            'ServiceExtras.ServiceExtraSettings'
         ]);
 
         foreach ($this->ServiceExtraOrders->getExpiredPending(
             $company_id,
-            self::UNPAID_ORDER_TTL_HOURS
+            $this->ServiceExtraSettings->getUnpaidOrderTtlHours($company_id)
         ) as $order) {
             try {
                 $service = $this->Services->get((int) $order->service_id);
@@ -1133,7 +1143,11 @@ class ServiceExtrasPlugin extends Plugin
                 : null
         );
         $this->view->set('pricing_totals', $pricing_totals);
-        $this->view->set('unpaid_order_ttl_hours', self::UNPAID_ORDER_TTL_HOURS);
+        Loader::loadModels($this, ['ServiceExtras.ServiceExtraSettings']);
+        $this->view->set(
+            'unpaid_order_ttl_hours',
+            $this->ServiceExtraSettings->getUnpaidOrderTtlHours($context['package']->company_id)
+        );
         $controller = $this->base_uri === WEBDIR . trim((string) Configure::get('Route.admin'), '/') . '/'
             ? 'admin_main'
             : 'client_main';

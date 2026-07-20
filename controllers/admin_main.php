@@ -11,7 +11,8 @@ class AdminMain extends ServiceExtrasController
             'Packages',
             'PluginManager',
             'Services',
-            'ServiceExtras.ServiceExtraRules'
+            'ServiceExtras.ServiceExtraRules',
+            'ServiceExtras.ServiceExtraSettings'
         ]);
 
         $this->structure->setDefaultView(APPDIR);
@@ -82,7 +83,34 @@ class AdminMain extends ServiceExtrasController
 
     public function index()
     {
+        $unpaid_order_ttl_hours = $this->ServiceExtraSettings->getUnpaidOrderTtlHours(
+            $this->company_id
+        );
+        if (isset($this->post['save_settings'])) {
+            $unpaid_order_ttl_hours = $this->post['unpaid_order_ttl_hours'] ?? '';
+            if (!$this->ServiceExtraSettings->setUnpaidOrderTtlHours(
+                $this->company_id,
+                $unpaid_order_ttl_hours
+            )) {
+                $this->setMessage(
+                    'error',
+                    $this->ServiceExtraSettings->errors(),
+                    false,
+                    null,
+                    false
+                );
+            } else {
+                $this->flashMessage('message', Language::_('AdminMain.!success.settings_updated', true));
+                $this->redirect($this->base_uri . 'plugin/service_extras/admin_main/');
+            }
+        }
+
         $this->set('rules', $this->ServiceExtraRules->getAll($this->company_id));
+        $this->set('unpaid_order_ttl_hours', $unpaid_order_ttl_hours);
+        $this->set(
+            'maximum_unpaid_order_ttl_hours',
+            ServiceExtraSettings::MAXIMUM_UNPAID_ORDER_TTL_HOURS
+        );
         $this->selectionLists();
         return $this->renderAjaxWidgetIfAsync();
     }
