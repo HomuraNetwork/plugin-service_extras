@@ -221,16 +221,6 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                     <dd class="col-sm-8"><strong><?php echo $this->Html->safe($value); ?></strong></dd>
                         <?php } ?>
                     <?php } ?>
-                    <?php if ($service_end_date !== '') { ?>
-                    <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.service_ends'); ?></dt>
-                    <dd class="col-sm-8">
-                        <strong><?php $this->_(
-                            'ServiceExtrasPlugin.purchase.automatic_cancellation',
-                            false,
-                            $this->Html->safe($service_end_date)
-                        ); ?></strong>
-                    </dd>
-                    <?php } ?>
                 </dl>
                 <?php if (!empty($preview['notice'])) { ?>
                 <div class="alert alert-info mt-3">
@@ -242,6 +232,15 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                     <?php echo $module_review_html; ?>
                 </div>
                 <?php } ?>
+                <?php if ($service_end_date !== '') { ?>
+                <p class="small text-muted mt-3 mb-0 service-extra-auto-cancellation">
+                    <?php $this->_(
+                        'ServiceExtrasPlugin.purchase.automatic_cancellation',
+                        false,
+                        $this->Html->safe($service_end_date)
+                    ); ?>
+                </p>
+                <?php } ?>
             </div>
             <div class="col-lg-4 service-extra-review-total pl-lg-4 mt-3 mt-lg-0">
                 <?php if (!empty($pricing_totals)) { ?>
@@ -252,9 +251,12 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                 ); ?></h4>
                 <?php } ?>
                 <div class="border shadow-sm px-3 py-2 mb-2" role="note">
-                    <strong class="small"><?php $this->_(
+                    <span class="small"><?php $this->_(
                         'ServiceExtrasPlugin.purchase.payment_destination'
-                    ); ?></strong>
+                    ); ?></span>
+                    <strong class="d-block small mt-1 font-weight-bold fw-bold">
+                        <?php $this->_('ServiceExtrasPlugin.purchase.payment_provisioning'); ?>
+                    </strong>
                 </div>
                 <p class="text-muted small mb-0"><?php $this->_(
                     'ServiceExtrasPlugin.purchase.payment_window',

@@ -235,10 +235,11 @@ assertSameValue(
         && strpos($tab_view_source, "Date->cast(\$scheduled_cancellation, 'date_time')") === false,
     'The module-provided period end date must be preferred and displayed without a time.'
 );
-$service_end_position = strpos(
+$automatic_cancellation_position = strpos(
     $tab_view_source,
-    "ServiceExtrasPlugin.purchase.service_ends'); ?></dt>"
+    'service-extra-auto-cancellation'
 );
+$module_review_position = strpos($tab_view_source, 'service-extra-module-review');
 $review_total_position = strpos(
     $tab_view_source,
     '<div class="col-lg-4 service-extra-review-total'
@@ -247,11 +248,14 @@ assertSameValue(
     true,
     strpos($tab_view_source, "['_service_extra']['parent_reference']") !== false
         && strpos($tab_view_source, '$service_reference') !== false
-        && $service_end_position !== false
+        && $automatic_cancellation_position !== false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.automatic_cancellation') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.service_ends') === false
+        && $module_review_position !== false
+        && $module_review_position < $automatic_cancellation_position
         && $review_total_position !== false
-        && $service_end_position < $review_total_position,
-    'Review must identify the parent service and explain automatic cancellation beside its end date.'
+        && $automatic_cancellation_position < $review_total_position,
+    'Review must place the dated automatic cancellation notice on one line below module details.'
 );
 assertSameValue(
     true,
@@ -318,7 +322,9 @@ assertSameValue(
 assertSameValue(
     true,
     strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_destination') !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_provisioning') !== false
         && strpos($tab_view_source, 'border shadow-sm px-3 py-2') !== false
+        && strpos($tab_view_source, 'font-weight-bold fw-bold') !== false
         && strpos($tab_view_source, 'alert alert-warning') === false
         && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_window_heading') === false,
     'The review step must emphasize activation time without overemphasizing the payment deadline.'
