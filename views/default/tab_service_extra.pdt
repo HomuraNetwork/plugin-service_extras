@@ -9,6 +9,10 @@ $service_reference = $preview['_service_extra']['parent_reference'] ?? ($service
 $service_end_date = is_array($preview) && is_scalar($preview['valid_until'] ?? null)
     ? trim((string) $preview['valid_until'])
     : '';
+$module_review_html = is_array($preview)
+    && is_scalar($preview['_service_extra']['review_html'] ?? null)
+        ? trim((string) $preview['_service_extra']['review_html'])
+        : '';
 if ($service_end_date === '' && !empty($scheduled_cancellation)) {
     $service_end_date = $this->Date->cast($scheduled_cancellation, 'Y-m-d');
 }
@@ -219,12 +223,23 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                     <?php } ?>
                     <?php if ($service_end_date !== '') { ?>
                     <dt class="col-sm-4"><?php $this->_('ServiceExtrasPlugin.purchase.service_ends'); ?></dt>
-                    <dd class="col-sm-8"><strong><?php echo $this->Html->safe($service_end_date); ?></strong></dd>
+                    <dd class="col-sm-8">
+                        <strong><?php $this->_(
+                            'ServiceExtrasPlugin.purchase.automatic_cancellation',
+                            false,
+                            $this->Html->safe($service_end_date)
+                        ); ?></strong>
+                    </dd>
                     <?php } ?>
                 </dl>
                 <?php if (!empty($preview['notice'])) { ?>
                 <div class="alert alert-info mt-3">
                     <?php echo $this->Html->safe($preview['notice']); ?>
+                </div>
+                <?php } ?>
+                <?php if ($module_review_html !== '') { ?>
+                <div class="mt-3 service-extra-module-review">
+                    <?php echo $module_review_html; ?>
                 </div>
                 <?php } ?>
             </div>
@@ -236,9 +251,11 @@ if ($service_end_date === '' && !empty($scheduled_cancellation)) {
                     $selected['pricing']->currency
                 ); ?></h4>
                 <?php } ?>
-                <p class="small mb-2"><?php $this->_(
-                    'ServiceExtrasPlugin.purchase.payment_destination'
-                ); ?></p>
+                <div class="border shadow-sm px-3 py-2 mb-2" role="note">
+                    <strong class="small"><?php $this->_(
+                        'ServiceExtrasPlugin.purchase.payment_destination'
+                    ); ?></strong>
+                </div>
                 <p class="text-muted small mb-0"><?php $this->_(
                     'ServiceExtrasPlugin.purchase.payment_window',
                     false,

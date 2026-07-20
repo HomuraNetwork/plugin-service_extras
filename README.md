@@ -9,7 +9,7 @@ The purchase page appears as a separate tab on eligible active services in both 
 - Blesta 6.0.0-b4 or later
 - A package group containing the products customers may purchase
 
-Modules may optionally provide availability checks, purchase details, and a specific service end time. Products without these module hooks still use the normal Blesta service and invoicing flow.
+Modules may optionally provide availability checks, purchase details, a specific service end time, and trusted review markup displayed after the standard purchase details. Products without these module hooks still use the normal Blesta service and invoicing flow.
 
 ## Installation
 
@@ -81,7 +81,7 @@ Payment must be completed within the configured unpaid purchase expiry window. E
 
 ## Scheduled service end
 
-Some products are valid only until a date supplied by the module. Service Extras displays this date in the confirmation preview and stores it as the service's scheduled end date.
+Some products are valid only until a date supplied by the module. Service Extras displays this date in the confirmation preview, explains that the child service will cancel automatically when the active period ends, and stores it as the service's scheduled end date.
 
 One-time pricing prevents renewal invoices but does not cancel the service record by itself. If the module supplies no end date, the service follows only its Blesta package pricing and remains available for staff to complete or close when appropriate. Disabling or deleting a rule does not cancel paid existing services or alter their invoices.
 

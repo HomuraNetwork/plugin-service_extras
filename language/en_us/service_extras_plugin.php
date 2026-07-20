@@ -37,6 +37,7 @@ $lang['ServiceExtrasPlugin.purchase.review_button'] = 'Review purchase';
 $lang['ServiceExtrasPlugin.purchase.back'] = 'Back';
 $lang['ServiceExtrasPlugin.purchase.due_now'] = 'Due now';
 $lang['ServiceExtrasPlugin.purchase.service_ends'] = 'Service active until';
+$lang['ServiceExtrasPlugin.purchase.automatic_cancellation'] = 'This service is scheduled to cancel automatically on %1$s.';
 $lang['ServiceExtrasPlugin.purchase.payment_destination'] = 'After payment is confirmed, this product is activated automatically. Provisioning usually completes within a few minutes.';
 $lang['ServiceExtrasPlugin.purchase.payment_window'] = 'Complete payment within %1$s hours. Unpaid purchases are automatically canceled after that time.';
 $lang['ServiceExtrasPlugin.purchase.continue_payment'] = 'Continue to payment';

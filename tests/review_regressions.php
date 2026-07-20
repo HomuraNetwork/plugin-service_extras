@@ -248,9 +248,17 @@ assertSameValue(
     strpos($tab_view_source, "['_service_extra']['parent_reference']") !== false
         && strpos($tab_view_source, '$service_reference') !== false
         && $service_end_position !== false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.automatic_cancellation') !== false
         && $review_total_position !== false
         && $service_end_position < $review_total_position,
-    'Review must identify the parent service using the module reference and keep its end date with the details.'
+    'Review must identify the parent service and explain automatic cancellation beside its end date.'
+);
+assertSameValue(
+    true,
+    strpos($tab_view_source, "['_service_extra']['review_html']") !== false
+        && strpos($tab_view_source, 'service-extra-module-review') !== false
+        && strpos($tab_view_source, '<?php echo $module_review_html; ?>') !== false,
+    'Trusted modules must be able to append review markup after the standard purchase details.'
 );
 assertSameValue(
     true,
@@ -309,8 +317,11 @@ assertSameValue(
 );
 assertSameValue(
     true,
-    strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_destination') !== false,
-    'The review step must explain the expected activation time after payment.'
+    strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_destination') !== false
+        && strpos($tab_view_source, 'border shadow-sm px-3 py-2') !== false
+        && strpos($tab_view_source, 'alert alert-warning') === false
+        && strpos($tab_view_source, 'ServiceExtrasPlugin.purchase.payment_window_heading') === false,
+    'The review step must emphasize activation time without overemphasizing the payment deadline.'
 );
 assertSameValue(
     true,
